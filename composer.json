@@ -1,0 +1,15 @@
+{
+    "name": "neilwilliams/tm-wishlist",
+    "autoload": {
+        "psr-4": {
+            "Neilwilliams\\TmWishlist\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Neil Williams",
+            "email": "neil@tailormade.uk"
+        }
+    ],
+    "require": {}
+}
