@@ -1,0 +1,11 @@
+{
+  "name": "tm-wishlist",
+  "version": "1.0.0",
+  "description": "WordPress Wishlist Plugin",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"No JS tests configured. Use composer test for PHP.\" && exit 0"
+  },
+  "author": "Neil Williams",
+  "license": "GPL-2.0-or-later"
+}
