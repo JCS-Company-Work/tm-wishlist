@@ -1,0 +1,10 @@
+TMWL_Assets
+ [x] All scripts enqueued
+
+TMWL_DB
+ [x] Get table name returns correct value
+ [x] Create table creates table
+
+TMWL_Init
+ [x] Init method exists
+

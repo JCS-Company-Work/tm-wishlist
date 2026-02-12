@@ -15,3 +15,6 @@ if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
 
 // Now load the WP test suite bootstrap
 require_once '/tmp/wordpress-tests-lib/includes/bootstrap.php';
+
+// Load WooCommerce plugin (required for our plugin to work)
+require_once WP_PLUGIN_DIR . '/woocommerce/woocommerce.php';
