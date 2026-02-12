@@ -13,8 +13,8 @@
      */
     class TMWL_Init {
         public static function init() {
-            // TMWL_Assets::init();
-            // TMWL_Main::init();
-            // TMWL_ComparisonManager::init();
+            TMWL_Assets::init();
+            TMWL_Main::init();
+            TMWL_ComparisonManager::init();
         }
     }

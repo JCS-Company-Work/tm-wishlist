@@ -1,1 +1,1 @@
-{"version":1,"defects":{"TMWL_DBTest::testGetTableNameReturnsCorrectValue":4},"times":{"MinimalTest::testPhpunitWorks":0,"TMWL_DBTest::testGetTableNameReturnsCorrectValue":0}}
+{"version":1,"defects":{"TMWL_DBTest::testGetTableNameReturnsCorrectValue":4,"TMWL_DBTest::testCreateTableCreatesTable":3},"times":{"MinimalTest::testPhpunitWorks":0,"TMWL_DBTest::testGetTableNameReturnsCorrectValue":0,"TMWL_DBTest::testCreateTableCreatesTable":0.004,"TMWL_InitTest::testInitMethodExists":0}}
