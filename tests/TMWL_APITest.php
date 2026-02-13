@@ -27,8 +27,13 @@
         */
         public static function setUpBeforeClass(): void {
             
-            /** @var \wpdb $wpdb */
             global $wpdb;
+
+            // Ensure $wpdb is available
+            if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
+                // Optionally log or skip setup
+                return;
+            }
 
             // Ensure required constants are defined
             if (!defined('TMWL_URL')) {
@@ -40,7 +45,7 @@
 
             // Initialize the database table and insert test data
             $table_name = \TMWishlist\TMWL_DB::get_table_name();
-            
+
             // User tokens, not randomly generated to ensure user token occurs in multiple rows in data
             $userTokens = [
                 'user-4g7k2b1x',
@@ -59,10 +64,9 @@
                 'user-5p6o7i8u',
                 'user-3s4d5f6g',
             ];
-                
+
             // Insert 100 test rows with random user_tokens and share_tokens
             for ($i = 0; $i < 100; $i++) {
-
                 // Generate share token (20 chars, letters and numbers)
                 $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
                 $share_token = '';
@@ -78,7 +82,6 @@
 
                 // Generate random items for the current row
                 for ($j = 0; $j < $itemCount; $j++) {
-
                     // Generate random product data in correct format
                     $items[] = [
                         'product_id'   => (string)(4800 + rand(1, 10)),
@@ -111,12 +114,23 @@
          *
          * @return void
          */
-        // public static function tearDownAfterClass(): void {
-        //     /** @var \wpdb $wpdb */
-        //     global $wpdb;
-        //     $table_name = \TMWishlist\TMWL_DB::get_table_name();
-        //     $wpdb->query("DELETE FROM $table_name");
-        // }
+        public static function tearDownAfterClass(): void {
+
+            global $wpdb;
+            
+            // Ensure $wpdb is available
+            if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
+                // Optionally log or skip cleanup
+                return;
+            }
+
+            // Get table name
+            $table_name = \TMWishlist\TMWL_DB::get_table_name();
+
+            // Delete all rows from the table to clean up test data
+            $wpdb->query("DELETE FROM $table_name");
+
+        }
 
         /**
          * Generate a flat array of product items
@@ -182,12 +196,14 @@
 
             // Check DB for the new row
             global $wpdb;
-
+            if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
+                $this->fail('$wpdb is not available for DB assertions');
+                return;
+            }
             // Get the row with the share_token returned in the response. Use this as share_token is unique 
             //and is generated in the save_comparison method, so we can be sure this is the correct row.
             $table = \TMWishlist\TMWL_DB::get_table_name();
             $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE share_token = %s", $response['share_token']));
-            
             // Check that the data in the DB matches the data we sent in the request
             $this->assertNotNull($row);
             $this->assertEquals(json_encode($data), $row->data);
@@ -276,11 +292,19 @@
 
         }
 
+        /**
+        * This test verifies that the rename list endpoint updates the list name and returns the expected response structure
+        *
+        * @return void
+        */
         public function test_rename_list_updates() {
 
-            /** @var \wpdb $wpdb */
             global $wpdb;
 
+            if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
+                $this->fail('$wpdb is not available for DB assertions');
+                return;
+            }
             // Get a share_token from the database to use in the test
             $table = \TMWishlist\TMWL_DB::get_table_name();
             $share_token = $wpdb->get_var( "SELECT share_token FROM $table LIMIT 1" );

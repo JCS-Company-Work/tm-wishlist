@@ -15,10 +15,13 @@
         "phpunit/phpunit": "^12.5",
         "yoast/phpunit-polyfills": "^4.0",
         "vlucas/phpdotenv": "^5.6",
-        "brain/monkey": "^2.7"
+        "brain/monkey": "^2.7",
+        "php-stubs/wordpress-stubs": "^6.9"
     }
     ,
     "scripts": {
         "test": "php $HOME/.composer/phpunit9.phar --debug"
-    }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }

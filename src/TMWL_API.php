@@ -274,12 +274,15 @@
             /** @var \wpdb $wpdb */
             global $wpdb;
 
+            // Ensure $wpdb is available
+            if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
+                return new \WP_Error( 'db_unavailable', 'Database not available', [ 'status' => 500 ] );
+            }
+
             // Extract share_token from request body
             $share_token = $request->get_param('share_token');
-            
             // Extract name from request body
             $list_name = $request->get_param('list_name');
-
             // Get table name
             $table_name = TMWL_DB::get_table_name();
 

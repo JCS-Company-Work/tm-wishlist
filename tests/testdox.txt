@@ -1,3 +1,22 @@
+Test Suite Improvements
+ [x] Test data generation centralized in class constants
+ [x] Dynamic share token selection for tests (no hardcoding)
+ [x] Robust test setup/teardown for database
+ [x] PHPUnit tests for all major endpoints
+
+IDE/Dev Experience
+ [x] Installed php-stubs/wordpress-stubs for Intelliphense support
+ [x] Added PHPDoc annotations for $wpdb
+ [x] Composer config updated for dev dependencies
+ [x] Intelliphense cache cleared and VS Code reloaded
+
+TMWL_API
+ [x] Registers REST API routes for /lists, /lists/{share_token}, /user-token
+ [x] save_comparison creates new list and returns correct structure
+ [x] get_all_lists returns expected data format
+ [x] generate_user_token returns valid user token
+ [x] rename_list updates list name via REST endpoint
+
 TMWL_Assets
  [x] All scripts enqueued
 
