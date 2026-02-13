@@ -2,9 +2,23 @@
 
     use PHPUnit\Framework\TestCase;
     use TMWishlist\TMWL_API;
-    use WP_REST_Request;
 
     class TMWL_APITest extends TestCase {
+
+        /**
+         * Mock data for test class
+         */
+        const DATA = [
+            'colours' => ['Yamuna', 'Ganges', 'Nile', 'Amazon'],
+            'bases' => ['Yamuna', 'Ganges', 'Nile', 'Amazon'],
+            'models' => ['300cm', '250cm', '200cm'],
+            'productNames' => ['Tavolo Piazza Alveo', 'Tavolo Piazza Classico', 'Tavolo Piazza Moderno'],
+            'urls' => [
+                'https://tm-store-jan-26.local/product/tavolo-piazza-alveo-solido-12/',
+                'https://tm-store-jan-26.local/product/tavolo-piazza-classico/',
+                'https://tm-store-jan-26.local/product/tavolo-piazza-moderno/'
+            ]
+        ];
 
         /**
         * Set up test data in the database before any tests run
@@ -45,19 +59,8 @@
                 'user-5p6o7i8u',
                 'user-3s4d5f6g',
             ];
-
+                
             // Insert 100 test rows with random user_tokens and share_tokens
-            $colours = ['Yamuna', 'Ganges', 'Nile', 'Amazon'];
-            $bases = ['Yamuna', 'Ganges', 'Nile', 'Amazon'];
-            $models = ['300cm', '250cm', '200cm'];
-            $productNames = ['Tavolo Piazza Alveo', 'Tavolo Piazza Classico', 'Tavolo Piazza Moderno'];
-            $urls = [
-                'https://tm-store-jan-26.local/product/tavolo-piazza-alveo-solido-12/',
-                'https://tm-store-jan-26.local/product/tavolo-piazza-classico/',
-                'https://tm-store-jan-26.local/product/tavolo-piazza-moderno/'
-            ];
-
-            //
             for ($i = 0; $i < 100; $i++) {
 
                 // Generate share token (20 chars, letters and numbers)
@@ -79,13 +82,13 @@
                     // Generate random product data in correct format
                     $items[] = [
                         'product_id'   => (string)(4800 + rand(1, 10)),
-                        'productName'  => $productNames[array_rand($productNames)],
+                        'productName'  => self::DATA['productNames'][array_rand(self::DATA['productNames'])],
                         'price'        => '\u00a3' . (string)(rand(2000, 9000)) . '.00',
-                        'colour'       => $colours[array_rand($colours)],
-                        'base'         => $bases[array_rand($bases)],
-                        'model'        => $models[array_rand($models)],
+                        'colour'       => self::DATA['colours'][array_rand(self::DATA['colours'])],
+                        'base'         => self::DATA['bases'][array_rand(self::DATA['bases'])],
+                        'model'        => self::DATA['models'][array_rand(self::DATA['models'])],
                         'layerIds'     => [ (string)(5300 + rand(1, 99)), (string)(5300 + rand(100, 199)) ],
-                        'url'          => $urls[array_rand($urls)],
+                        'url'          => self::DATA['urls'][array_rand(self::DATA['urls'])],
                     ];
                 }
 
@@ -108,11 +111,87 @@
          *
          * @return void
          */
-        public static function tearDownAfterClass(): void {
-            /** @var \wpdb $wpdb */
+        // public static function tearDownAfterClass(): void {
+        //     /** @var \wpdb $wpdb */
+        //     global $wpdb;
+        //     $table_name = \TMWishlist\TMWL_DB::get_table_name();
+        //     $wpdb->query("DELETE FROM $table_name");
+        // }
+
+        /**
+         * Generate a flat array of product items
+         *
+         * @param int $count
+         * @return array
+         */
+        protected static function generate_items(int $count = 3): array {
+
+            // Array to hold randomly generated items
+            $items = [];
+
+            // Generate random items for the current row
+            for ($i = 0; $i < $count; $i++) {
+
+                // Generate random product data in correct format
+                $items[] = [
+                    'product_id'   => (string)(4800 + rand(1, 10)),
+                    'productName'  => self::DATA['productNames'][array_rand(self::DATA['productNames'])],
+                    'price'        => '\u00a3' . (string)(rand(2000, 9000)) . '.00',
+                    'colour'       => self::DATA['colours'][array_rand(self::DATA['colours'])],
+                    'base'         => self::DATA['bases'][array_rand(self::DATA['bases'])],
+                    'model'        => self::DATA['models'][array_rand(self::DATA['models'])],
+                    'layerIds'     => [ (string)(5300 + rand(1, 99)), (string)(5300 + rand(100, 199)) ],
+                    'url'          => self::DATA['urls'][array_rand(self::DATA['urls'])],
+                ];
+
+            }
+
+            // Return the generated items
+            return $items;
+
+        }
+
+         /**
+         * This test verifies that the save_comparison method creates a new list and returns the expected response structure
+         *
+         * @return void
+         */
+        public function test_save_comparison_creates_new_list() {
+            
+            // Initialize the API class
+            $api = new \TMWishlist\TMWL_API();
+
+            // Generate sample data for products
+            $data = self::generate_items(5);
+
+            $request = new \WP_REST_Request('POST', '/tm-wishlist/v1/lists');
+            $request->set_body(json_encode([
+                'share_token' => '',
+                'data' => $data,
+            ]));
+            $request->set_header('Content-Type', 'application/json');
+
+            // Call the method
+            $response = $api->save_comparison($request);
+
+            // Check response structure
+            $this->assertIsArray($response);
+            $this->assertTrue($response['success']);
+            $this->assertArrayHasKey('share_token', $response);
+            $this->assertArrayHasKey('share_url', $response);
+
+            // Check DB for the new row
             global $wpdb;
-            $table_name = \TMWishlist\TMWL_DB::get_table_name();
-            $wpdb->query("DELETE FROM $table_name");
+
+            // Get the row with the share_token returned in the response. Use this as share_token is unique 
+            //and is generated in the save_comparison method, so we can be sure this is the correct row.
+            $table = \TMWishlist\TMWL_DB::get_table_name();
+            $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE share_token = %s", $response['share_token']));
+            
+            // Check that the data in the DB matches the data we sent in the request
+            $this->assertNotNull($row);
+            $this->assertEquals(json_encode($data), $row->data);
+
         }
 
         /**
@@ -194,6 +273,59 @@
             
              // Assert the user_token matches the expected format: user-xxxxxxxx (8 alphanumeric)
             $this->assertMatchesRegularExpression('/^user-[a-z0-9]{8}$/i', $data['user_token']);
+
+        }
+
+        public function test_rename_list_updates() {
+
+            /** @var \wpdb $wpdb */
+            global $wpdb;
+
+            // Get a share_token from the database to use in the test
+            $table = \TMWishlist\TMWL_DB::get_table_name();
+            $share_token = $wpdb->get_var( "SELECT share_token FROM $table LIMIT 1" );
+            $this->assertNotEmpty($share_token, 'No share_token found in test database');
+
+            // Generate a random list name in 'Test List Name' format
+            $randomWord = ucfirst(substr(str_shuffle('abcdefghijklmnopqrstuvwxyz'), 0, 5));
+            $list_name = "Test List $randomWord";
+
+            // Initialize the API class
+            new TMWL_API();
+
+            // Trigger REST API initialization
+            do_action('rest_api_init');
+
+            // Make a PUT request to the /lists/{share_token} endpoint 
+            $request = new WP_REST_Request('PUT', '/tm-wishlist/v1/lists/' . $share_token);
+
+            // Set request body with new name for the list
+            $request->set_body(json_encode([
+                'list_name' => $list_name,
+            ]));
+
+            // Set content type header for JSON
+            $request->set_header('Content-Type', 'application/json');
+
+            // Simulate the REST API request
+            $response = rest_do_request($request);
+
+            // Get the response data
+            $data = $response->get_data();
+
+            // Assert that the response is successful (200)
+            $this->assertEquals(200, $response->get_status());
+
+            // Check data structure
+            $this->assertIsArray($data);
+
+            // Ensure 'success', 'share_token', and 'list_name' array keys exist in $data array
+            $this->assertArrayHasKey('success', $data);
+            $this->assertArrayHasKey('share_token', $data);
+            $this->assertArrayHasKey('list_name', $data);
+
+            // Assert the returned list_name matches what we sent
+            $this->assertEquals($list_name, $data['list_name']);
 
         }
 

@@ -95,6 +95,16 @@
             $incoming_share_token = sanitize_text_field($params['share_token'] ?? '');
             $incoming_data = is_array($params['data'] ?? null) ? $params['data'] : [];
 
+            // User token logic ---
+            $incoming_user_token = sanitize_text_field($params['user_token'] ?? '');
+            if (empty($incoming_user_token) && isset($_COOKIE['tm_wishlist_user_token'])) {
+                $incoming_user_token = sanitize_text_field($_COOKIE['tm_wishlist_user_token']);
+            }
+            if (empty($incoming_user_token)) {
+                // Generate a new user token
+                $incoming_user_token = 'user-' . substr(str_shuffle('abcdefghijklmnopqrstuvwxyz0123456789'), 0, 8);
+            }
+
             // If no share token in request, check cookie for existing token
             if (empty($incoming_share_token) && isset($_COOKIE['tm_wishlist_share_token'])) {
                 $incoming_share_token = sanitize_text_field($_COOKIE['tm_wishlist_share_token']);
@@ -110,14 +120,18 @@
                 return new \WP_Error('forbidden', 'You do not have permission to edit this wishlist.', 403);
             }
 
-            // If row exists, update. If not, insert new row with new share token.
+            // If row exists, update. If not, insert new row with new share token and user token.
             if ($row) {
                 // Update data
                 $wpdb->update(
                     $table_name,
-                    ['data' => wp_json_encode($incoming_data), 'updated_at' => current_time('mysql')],
+                    [
+                        'data' => wp_json_encode($incoming_data),
+                        'updated_at' => current_time('mysql'),
+                        'user_token' => $incoming_user_token,
+                    ],
                     ['share_token' => $incoming_share_token],
-                    ['%s', '%s'],
+                    ['%s', '%s', '%s'],
                     ['%s']
                 );
                 $share_token = $row->share_token;
@@ -126,18 +140,30 @@
                 $share_token = $incoming_share_token ?: bin2hex(random_bytes(10));
                 $wpdb->insert(
                     $table_name,
-                    ['share_token' => $share_token, 'data' => wp_json_encode($incoming_data), 'updated_at' => current_time('mysql')],
-                    ['%s', '%s', '%s']
+                    [
+                        'user_token' => $incoming_user_token,
+                        'share_token' => $share_token,
+                        'data' => wp_json_encode($incoming_data),
+                        'updated_at' => current_time('mysql'),
+                    ],
+                    ['%s', '%s', '%s', '%s']
                 );
             }
 
-            // Prepare response with share URL
-            $result = [ 'success' => true, 'share_token' => $share_token ];
+            // Prepare response with share URL and user token
+            $result = [
+                'success' => true,
+                'share_token' => $share_token,
+                'user_token' => $incoming_user_token,
+            ];
             $result['share_url'] = trailingslashit( home_url( 'wishlist' ) ) . 'share/' . rawurlencode( $share_token ) . '/';
             
-            // Set cookie server-side for maximum persistence (1 year, SameSite=Lax)
+            // Set cookies server-side for maximum persistence (1 year, SameSite=Lax)
             if (!isset($_COOKIE['tm_wishlist_share_token']) || $_COOKIE['tm_wishlist_share_token'] !== $share_token) {
                 setcookie('tm_wishlist_share_token', $share_token, time() + 31536000, '/', '', false, false);
+            }
+            if (!isset($_COOKIE['tm_wishlist_user_token']) || $_COOKIE['tm_wishlist_user_token'] !== $incoming_user_token) {
+                setcookie('tm_wishlist_user_token', $incoming_user_token, time() + 31536000, '/', '', false, false);
             }
 
             // Return response
@@ -195,8 +221,6 @@
          * Placeholder for fetching all lists for a user_token
          */
         public function get_all_lists( \WP_REST_Request $request ) {
-
-            // Retrieve all lists for the user based on user_token
             
             // Global $wpdb for database access
             global $wpdb;
@@ -246,7 +270,35 @@
          * Placeholder for renaming a list
          */
         public function rename_list( \WP_REST_Request $request ) {
-            return new \WP_Error( 'not_implemented', 'Renaming a list is not yet implemented', [ 'status' => 501 ] );
+
+            /** @var \wpdb $wpdb */
+            global $wpdb;
+
+            // Extract share_token from request body
+            $share_token = $request->get_param('share_token');
+            
+            // Extract name from request body
+            $list_name = $request->get_param('list_name');
+
+            // Get table name
+            $table_name = TMWL_DB::get_table_name();
+
+            // Update the name for the given share_token
+            $wpdb->update(
+                $table_name,
+                [ 'list_name' => $list_name ],
+                [ 'share_token' => $share_token ],
+                [ '%s' ],
+                [ '%s' ]
+            );
+
+            // Return success response
+            return rest_ensure_response([
+                'success' => true,
+                'share_token' => $share_token,
+                'list_name' => $list_name,
+            ]);
+
         }
 
         /**
