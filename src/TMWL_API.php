@@ -21,49 +21,49 @@
          */
         public function register_routes() {
 
-            // RESTful: Create a new list
+            // Create a new list
             register_rest_route( 'tm-wishlist/v1', '/lists', [
                 'methods'  => 'POST',
                 'callback' => [ $this, 'save_comparison' ],
                 'permission_callback' => '__return_true',
             ]);
 
-            // RESTful: Fetch all lists for user_token (placeholder, needs implementation)
+            // Fetch all lists for user_token
             register_rest_route( 'tm-wishlist/v1', '/lists', [
                 'methods'  => 'GET',
                 'callback' => [ $this, 'get_all_lists' ],
                 'permission_callback' => '__return_true',
             ]);
 
-            // RESTful: Fetch a specific list by share_token
+            // Fetch a specific list by share_token
             register_rest_route( 'tm-wishlist/v1', '/lists/(?P<share_token>[A-Za-z0-9_-]+)', [
                 'methods'  => 'GET',
                 'callback' => [ $this, 'get_comparison' ],
                 'permission_callback' => '__return_true',
             ]);
 
-            // RESTful: Rename a list (PUT)
+            // Rename a list (PUT)
             register_rest_route( 'tm-wishlist/v1', '/lists/(?P<share_token>[A-Za-z0-9_-]+)', [
                 'methods'  => 'PUT',
                 'callback' => [ $this, 'rename_list' ],
                 'permission_callback' => '__return_true',
             ]);
 
-            // RESTful: Delete a list
+            // Delete a list
             register_rest_route( 'tm-wishlist/v1', '/lists/(?P<share_token>[A-Za-z0-9_-]+)', [
                 'methods'  => 'DELETE',
                 'callback' => [ $this, 'delete_list' ],
                 'permission_callback' => '__return_true',
             ]);
 
-            // RESTful: Clear all items from a list
+            // Clear all items from a list
             register_rest_route( 'tm-wishlist/v1', '/lists/(?P<share_token>[A-Za-z0-9_-]+)/items', [
                 'methods'  => 'DELETE',
                 'callback' => [ $this, 'clear_list_items' ],
                 'permission_callback' => '__return_true',
             ]);
 
-            // RESTful: Generate user token (placeholder, needs implementation)
+            // Generate user token
             register_rest_route( 'tm-wishlist/v1', '/user-token', [
                 'methods'  => 'POST',
                 'callback' => [ $this, 'generate_user_token' ],
@@ -172,7 +172,10 @@
         }
 
         /**
-         * Retrieve comparison by key (share_token)
+         * Get comparison data by share token
+         *
+         * @param \WP_REST_Request $request
+         * @return \WP_REST_Response
          */
         public function get_comparison( \WP_REST_Request $request ) {
 
@@ -218,7 +221,10 @@
         }
 
         /**
-         * Placeholder for fetching all lists for a user_token
+         * Fetch all lists for a given user_token (placeholder, currently returns empty data - needs implementation)
+         *
+         * @param \WP_REST_Request $request
+         * @return \WP_REST_Response
          */
         public function get_all_lists( \WP_REST_Request $request ) {
             
@@ -267,11 +273,13 @@
         }
 
         /**
-         * Placeholder for renaming a list
+         * Rename a list by share_token
+         *
+         * @param \WP_REST_Request $request
+         * @return \WP_REST_Response
          */
         public function rename_list( \WP_REST_Request $request ) {
 
-            /** @var \wpdb $wpdb */
             global $wpdb;
 
             // Ensure $wpdb is available
@@ -305,17 +313,77 @@
         }
 
         /**
-         * Placeholder for deleting a list
+         * Delete a list by share_token
+         *
+         * @param \WP_REST_Request $request
+         * @return void
          */
         public function delete_list( \WP_REST_Request $request ) {
-            return new \WP_Error( 'not_implemented', 'Deleting a list is not yet implemented', [ 'status' => 501 ] );
+
+            global $wpdb;
+
+            // Ensure $wpdb is available
+            if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
+                return new \WP_Error( 'db_unavailable', 'Database not available', [ 'status' => 500 ] );
+            }
+
+            // Extract share_token from request body
+            $share_token = $request->get_param('share_token');
+
+            // Get table name
+            $table_name = TMWL_DB::get_table_name();
+
+            // Delete the row for the given share_token
+            $wpdb->delete(
+                $table_name,
+                [ 'share_token' => $share_token ],
+                [ '%s' ]
+            );
+
+            // Return success response
+            return rest_ensure_response([
+                'success' => true,
+                'share_token' => $share_token,
+            ]);
+
         }
 
         /**
-         * Placeholder for clearing all items from a list
+         * Clear all items from a list (set data to empty array)
+         *
+         * @param \WP_REST_Request $request
+         * @return \WP_REST_Response
          */
         public function clear_list_items( \WP_REST_Request $request ) {
-            return new \WP_Error( 'not_implemented', 'Clearing list items is not yet implemented', [ 'status' => 501 ] );
+
+            global $wpdb;
+
+            // Ensure $wpdb is available
+            if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
+                return new \WP_Error( 'db_unavailable', 'Database not available', [ 'status' => 500 ] );
+            }
+
+            // Extract share_token from request body
+            $share_token = $request->get_param('share_token');
+
+            // Get table name
+            $table_name = TMWL_DB::get_table_name();
+
+            // Clear the items for the given share_token
+            $wpdb->update(
+                $table_name,
+                [ 'data' => '[]' ],
+                [ 'share_token' => $share_token ],
+                [ '%s' ],
+                [ '%s' ]
+            );
+
+            // Return success response
+            return rest_ensure_response([
+                'success' => true,
+                'share_token' => $share_token,
+            ]);
+
         }
 
         /**
