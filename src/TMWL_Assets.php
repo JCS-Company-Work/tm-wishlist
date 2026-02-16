@@ -52,8 +52,8 @@
 
             // Localize add items script
             wp_localize_script( 'tm-add-items-js', 'TMAddItemsSettings', [
-                'rest_save_url' => esc_url_raw( rest_url( 'tm-wishlist/v1/save' ) ),
-                'rest_get_url'  => esc_url_raw( rest_url( 'tm-wishlist/v1/get' ) ),
+                'rest_save_url' => esc_url_raw( rest_url( 'tm-wishlist/v1/lists' ) ),
+                'rest_get_url'  => esc_url_raw( rest_url( 'tm-wishlist/v1/lists' ) ),
                 'share_token'   => $share_token,
                 'nonce'         => wp_create_nonce( 'wp_rest' ),
             ]);
@@ -69,8 +69,8 @@
 
             // Localize compare script
             wp_localize_script( 'tm-compare-js', 'TMCompareSettings', [
-                'rest_save_url' => esc_url_raw( rest_url( 'tm-wishlist/v1/save' ) ),
-                'rest_get_url'  => esc_url_raw( rest_url( 'tm-wishlist/v1/get/' ) ),
+                'rest_save_url' => esc_url_raw( rest_url( 'tm-wishlist/v1/lists' ) ),
+                'rest_get_url'  => esc_url_raw( rest_url( 'tm-wishlist/v1/lists' ) ),
                 'nonce'         => wp_create_nonce( 'wp_rest' ),
                 'share_token'   => $share_token,
             ]);

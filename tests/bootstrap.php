@@ -28,4 +28,4 @@
     }
 
     // Now load the WP test suite bootstrap
-    require_once '/tmp/wordpress-tests-lib/includes/bootstrap.php';
+    require_once '/Users/neilwilliams/wordpress-test-suite/wordpress-tests-lib/tests/phpunit/includes/bootstrap.php';

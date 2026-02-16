@@ -5,7 +5,7 @@
     use TMWishlist\TMWL_API;
     use TMWishlist\TMWL_Assets;
     use TMWishlist\TMWL_Main;
-    use TMWishlist\TMWL_ComparisonManager;
+    use TMWishlist\TMWL_Compare;
 
     if ( ! defined( 'ABSPATH' ) ) exit;
 
@@ -20,14 +20,19 @@
          * @return void
          */
         public static function init() {
-
-            // Initialize core components
-            TMWL_Assets::init();
-            TMWL_Main::init();
-            TMWL_ComparisonManager::init();
+            
+            // Initialize main class
+            new TMWL_Main();
 
             // Initialize API routes
             new TMWL_API();
+            
+            // Initialize compare functionality
+            new TMWL_Compare();
+
+            // Initialize core components
+            TMWL_Assets::init();
 
         }
+        
     }
