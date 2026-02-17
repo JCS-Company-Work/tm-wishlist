@@ -14,6 +14,7 @@ class TMAddItems {
    * @typedef {Object} TMAddItemsOptions
    * @property {string|null} [syncUrl]          REST save URL for guests
    * @property {string|null} [syncGetUrl]       REST get URL base for guests (append /{key})
+   * @property {string|null} [userTokenUrl]       REST URL to fetch user token (if not included in settings)
    * @property {string|null} [nonce]            WP REST nonce
    */
   
@@ -27,6 +28,7 @@ class TMAddItems {
     this.STORAGE_KEY = 'tm_wishlist_configs';
     this.SYNC_URL = options.syncUrl || null;
     this.SYNC_GET_URL = options.syncGetUrl || null;
+    this.USER_TOKEN_URL = options.userTokenUrl || null;
 
     this.nonce = options.nonce || null;
 
@@ -303,15 +305,25 @@ class TMAddItems {
    * Ensure user token exists in localStorage and cookie.
    * If missing, generate a new one (UUID).
    */
-  ensureUserToken() {
+  async ensureUserToken() {
     let userToken = localStorage.getItem('tm_wishlist_user_token');
     if (!userToken) {
-      // Generate a short random string
-      userToken = 'user-' + Math.random().toString(36).substr(2, 8);
-      localStorage.setItem('tm_wishlist_user_token', userToken);
-      document.cookie = `tm_wishlist_user_token=${userToken}; path=/; SameSite=Lax; max-age=31536000`;
+      try {
+        const res = await fetch(this.USER_TOKEN_URL, { credentials: 'same-origin' });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const serverToken = data?.user_token || null;
+        if (!serverToken) return null;
+         // Generate a short random string
+      //userToken = 'user-' + Math.random().toString(36).substr(2, 8);
+      localStorage.setItem('tm_wishlist_user_token', serverToken);
+      document.cookie = `tm_wishlist_user_token=${serverToken}; path=/; SameSite=Lax; max-age=31536000`;
+        return serverToken;
+      } catch(err) {
+        console.error('Failed to fetch user token:', err);  
+      }
+     
     }
-    return userToken;
   }
 
   /**
@@ -760,5 +772,6 @@ class TMAddItems {
 new TMAddItems({
   syncUrl: window.TMAddItemsSettings?.rest_save_url || null,
   syncGetUrl: window.TMAddItemsSettings?.rest_get_url || null,
+  userTokenUrl: window.TMAddItemsSettings?.user_token || null,
   nonce: window.TMAddItemsSettings?.nonce || null,
 });

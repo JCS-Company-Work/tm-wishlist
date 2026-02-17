@@ -127,23 +127,23 @@
          *
          * @return void
          */
-        // public static function tearDownAfterClass(): void {
+        public static function tearDownAfterClass(): void {
 
-        //     global $wpdb;
+            global $wpdb;
             
-        //     // Ensure $wpdb is available
-        //     if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
-        //         // Optionally log or skip cleanup
-        //         return;
-        //     }
+            // Ensure $wpdb is available
+            if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
+                // Optionally log or skip cleanup
+                return;
+            }
 
-        //     // Get table name
-        //     $table_name = \TMWishlist\TMWL_DB::get_table_name();
+            // Get table name
+            $table_name = \TMWishlist\TMWL_DB::get_table_name();
 
-        //     // Delete all rows from the table to clean up test data
-        //     $wpdb->query("DELETE FROM $table_name");
+            // Delete all rows from the table to clean up test data
+            $wpdb->query("DELETE FROM $table_name");
 
-        // }
+        }
 
         /**
          * Generate a flat array of product items
@@ -373,6 +373,11 @@
 
         }
 
+        /**
+        * Verify that the delete list endpoint removes the list and returns expected response structure
+        *
+        * @return void
+        */
         public function test_delete_list() {
 
             global $wpdb;
@@ -414,6 +419,72 @@
 
         }
 
+        /**
+         * Remove list link from user but leave accessible in the database cvia share_token
+         * we achieve this by setting the user_token value for the row to NULL
+         *
+         * @return void
+         */
+        public function test_list_delete_for_user() {
+
+            global $wpdb;
+
+            // Ensure $wpdb is available
+            if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
+                // Optionally log or skip setup
+                return;
+            }
+
+            // Extract share token from database to test with.
+            $share_token = self::get_share_token_from_db($wpdb);
+            
+            // Initialize the API class
+            new TMWL_API();
+
+            // Trigger REST API initialization
+            do_action('rest_api_init');
+
+            // Get the user token associated with the share token from the database
+            $table = \TMWishlist\TMWL_DB::get_table_name();
+            $user_token = $wpdb->get_var( $wpdb->prepare("SELECT user_token FROM $table WHERE share_token = %s", $share_token) );
+
+            // Set the cookie for the test environment
+            $_COOKIE['tm_wishlist_user_token'] = $user_token;
+
+            // Make a DELETE request to the /lists/{share_token}/user endpoint 
+            // (leave wp-json prefix out since rest_do_request expects the route to start with the namespace)
+            $request = new WP_REST_Request('DELETE', '/tm-wishlist/v1/lists/' . $share_token . '/user');
+
+            // Simulate the REST API request
+            $response = rest_do_request($request);
+            
+            // Get the response data
+            $data = $response->get_data();
+            var_dump($data);
+
+            // Assert that the response is successful (200)
+            $this->assertEquals(200, $response->get_status());
+
+            // Check data structure
+            $this->assertIsArray($data);
+
+            // Check that user token has been removed from the list in the database
+            $row = $wpdb->get_row($wpdb->prepare("SELECT user_token FROM $table WHERE share_token = %s", $share_token));
+            $token_check = $row ?->user_token ?? null;
+            $this->assertNull($token_check, 'User token should be removed from the list in the database'); 
+
+            // Ensure 'success' and 'share_token' array keys exist in $data array
+            $this->assertArrayHasKey('success', $data);
+            $this->assertArrayHasKey('share_token', $data);
+
+        }
+
+        /**
+         * Clear all items from a list but keep the list and share_token accessible. 
+         * We achieve this by setting the data value for the row to an empty array
+         *
+         * @return void
+         */
         public function test_clear_list_items() {
 
             global $wpdb;

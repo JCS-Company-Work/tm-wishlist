@@ -81,6 +81,11 @@
             $this->assertStringContainsString('Your wishlist is empty', $output, 'Shortcode should show empty message when no data');
         }
 
+        /**
+        * Test the compare shortcode output when a valid share token with data is present
+        *
+        * @return void
+        */
         public function test_compare_shortcode_populated_list() {
             
             // Get single row from database to use as test data
@@ -138,5 +143,17 @@
             $this->assertStringContainsString('<h2 class="woocommerce-loop-product__title">', $output, 'Shortcode output should contain product name');
             $this->assertStringContainsString('<p class="price">', $output, 'Shortcode output should contain product price');
             
+        }
+
+        public function test_list_controls_create_html() {
+            $compare = new TMWL_Compare();
+            $output = $compare->listControlButtons();
+            $this->assertStringContainsString('stub for list control buttons', $output, 'List control buttons should return stub text');
+        }
+
+        public function test_active_wishlist_controls() {
+            $compare = new TMWL_Compare();
+            $output = $compare->activeWishlistControls();
+            $this->assertStringContainsString('stub for list control buttons', $output, 'Active wishlist controls should return stub text');
         }
     }

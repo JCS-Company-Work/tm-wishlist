@@ -4,6 +4,31 @@ Test Suite Improvements
  [x] Robust test setup/teardown for database
  [x] PHPUnit tests for all major endpoints
 
+TMWL_Compare
+ [x] Class existence verified
+ [x] Canonical link removal logic tested for share pages
+ [x] setUrl method sets URL correctly
+ [x] Shortcode output tested for empty state
+ [x] Shortcode output tested for populated list
+
+TMWL_DB
+ [x] get_table_name returns correct value
+ [x] create_table creates table and verifies existence
+
+TMWL_Init
+ [x] init method exists in class
+
+TMWL_Main
+ [x] Class existence verified
+ [x] Custom rewrite rules added and verified
+ [x] Custom query var registration tested
+ [x] Wishlist button HTML output tested
+
+TMWL_Assets
+ [x] Core script enqueued on all pages
+ [x] Add items script enqueued on product pages
+ [x] Compare script enqueued when shortcode present
+
 IDE/Dev Experience
  [x] Installed php-stubs/wordpress-stubs for Intelliphense support
  [x] Added PHPDoc annotations for $wpdb

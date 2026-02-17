@@ -55,6 +55,13 @@
                 'callback' => [ $this, 'delete_list' ],
                 'permission_callback' => '__return_true',
             ]);
+           
+            // Delete a list for user
+            register_rest_route( 'tm-wishlist/v1', '/lists/(?P<share_token>[A-Za-z0-9_-]+)/user', [
+                'methods'  => 'DELETE',
+                'callback' => [ $this, 'delete_list_for_user' ],
+                'permission_callback' => '__return_true',
+            ]);
 
             // Clear all items from a list
             register_rest_route( 'tm-wishlist/v1', '/lists/(?P<share_token>[A-Za-z0-9_-]+)/items', [
@@ -65,7 +72,7 @@
 
             // Generate user token
             register_rest_route( 'tm-wishlist/v1', '/user-token', [
-                'methods'  => 'POST',
+                'methods'  => 'GET',
                 'callback' => [ $this, 'generate_user_token' ],
                 'permission_callback' => '__return_true',
             ]);
@@ -227,7 +234,7 @@
          * @return \WP_REST_Response
          */
         public function get_all_lists( \WP_REST_Request $request ) {
-            
+
             // Global $wpdb for database access
             global $wpdb;
             
@@ -237,8 +244,7 @@
             }
 
             // Sanitize user_token parameter
-            //$user_token = sanitize_text_field( $request['user_token'] );
-            $user_token = 'user-7a4l3c9m';
+            $user_token = sanitize_text_field( $request->get_param('user_token') ?? '' );
 
             // Table name
             $table_name = TMWL_DB::get_table_name();
@@ -260,6 +266,8 @@
             // Decode data and check ownership
             $data = array_map(function($row) {
                 return [
+                    'list_name'     => $row->list_name,
+                    'share_token'   => $row->share_token,
                     'user_token'    => $row->user_token,
                     'data'          => json_decode( $row->data, true ) ?: [],
                     'edit_allowed'  => false, // For now, we can set this to false or implement logic based on user_token
@@ -316,7 +324,7 @@
          * Delete a list by share_token
          *
          * @param \WP_REST_Request $request
-         * @return void
+         * @return \WP_REST_Response
          */
         public function delete_list( \WP_REST_Request $request ) {
 
@@ -344,6 +352,47 @@
             return rest_ensure_response([
                 'success' => true,
                 'share_token' => $share_token,
+                'data' => null,
+            ]);
+
+        }
+
+        public function delete_list_for_user( \WP_REST_Request $request ) {
+
+            global $wpdb;
+
+            // Ensure $wpdb is available
+            if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
+                return new \WP_Error( 'db_unavailable', 'Database not available', [ 'status' => 500 ] );
+            }
+
+            // Extract share_token from request body
+            $share_token = $request->get_param('share_token');
+
+            // Get user token from cookie
+            $user_token = isset($_COOKIE['tm_wishlist_user_token']) ? sanitize_text_field($_COOKIE['tm_wishlist_user_token']) : '';
+
+            // Get table name
+            $table_name = TMWL_DB::get_table_name();
+
+            // Update the user_token to NULL (or empty string) for the matching row
+            $wpdb->update(
+                $table_name,
+                [ 'user_token' => NULL ],
+                [
+                    'share_token' => $share_token,
+                    'user_token' => $user_token,
+                ],
+                [ '%s' ],
+                [ '%s', '%s' ]
+            );
+
+            // Return success response
+            return rest_ensure_response([
+                'success' => true,
+                'share_token' => $share_token,
+                'user_token' => $user_token,
+                'data' => null,
             ]);
 
         }
@@ -382,6 +431,7 @@
             return rest_ensure_response([
                 'success' => true,
                 'share_token' => $share_token,
+                'data' => [],
             ]);
 
         }

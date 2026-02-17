@@ -35,6 +35,28 @@
         }
 
         /**
+         * Shortcode handler for [compare_products], renders the compare page based on share token in URL
+         *
+         * @return void
+         */
+        public function compare_shortcode() {
+
+            // Check if page is /wishlist or /wishlist/share/* and get share token from URL
+            if (preg_match('#^/wishlist/share/#', $_SERVER['REQUEST_URI'])) {
+
+                return $this->shareTokenList();
+                    
+
+            } else if(isset($_SERVER['REQUEST_URI']) && (rtrim($_SERVER['REQUEST_URI'], '/') === '/wishlist')) {
+                echo 'wishlist page';
+                
+                return $this->getUserLists();
+                
+            }
+
+        }
+
+        /**
          * Helper function to retrieve wishlist data based on share token, used in shortcode rendering
          *
          * @param string $share_token
@@ -70,16 +92,112 @@
 
         }
 
-        /**
-         * Shortcode handler for [compare_products], renders the compare page based on share token in URL
-         *
-         * @return void
-         */
-        public function compare_shortcode() {
+        public function getUserLists() {
+
+            // Check for user token in cookie
+            if ( isset($_COOKIE['tm_wishlist_user_token']) && !empty($_COOKIE['tm_wishlist_user_token']) ) {
+
+                // Fetch user token from cookie
+                $user_token = sanitize_text_field($_COOKIE['tm_wishlist_user_token']);
+
+                // Build API URL with user token as query parameter
+                $api_url = rest_url('tm-wishlist/v1/lists?user_token=' . urlencode($user_token));
+
+                // Make API request to fetch user's wishlists
+                $response = wp_remote_get($api_url);
+            
+                // Check for errors
+                if ( is_wp_error($response) ) {
+                    return '<p>Could not fetch your wishlists. Please try again later.</p>';
+                }
+
+                // Parse response and return data
+                $body = wp_remote_retrieve_body($response);
+                $data = json_decode($body, true);
+
+                // If no data, return message
+                if ( empty($data) ) {
+                    return '<p>Your wishlist is empty. To start, view our products pages.</p>';
+                }
+
+                // Output buffer for rendering lists
+                ob_start();
+
+                echo '<div class="tm-wishlist-multiple-lists">';
+
+                // Loop through lists and render each one
+                foreach ($data['lists'] as $list) {
+
+                    // Validate products data
+                    $products = $list['data'];
+
+                    // Skip if products data is not an array or is empty
+                    if ( !is_array($products) || empty($products) ) continue;
+
+                    $user_token = $list['user_token'] ?? '';
+                    $share_token = $list['share_token'] ?? '';
+                    $list_name = $list['list_name'];
+                    echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">';
+                    echo '<h3>' . esc_html($list_name) . '</h3>';
+                    echo '<div class="tm-compare-list">';
+
+                        foreach ($products as $item) {
+
+                            $image = self::createLayeredImage( $item['layerIds'], $item['productName'] );
+                            $url = self::setUrl($item);
+
+                            ?>
+
+                            <div class="tm-compare-item" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>">
+                                <a href="<?php echo esc_url( $url ); ?>">
+                                    <?php echo $image; ?>
+                                    <h2 class="woocommerce-loop-product__title"><?php echo esc_html( $item['productName'] ); ?></h2>
+                                </a>
+                                <?php if ( ! empty( $item['price'] ) ) : ?>
+                                    <p class="price"><strong>Price: </strong><?php echo esc_html( $item['price'] ); ?></p>
+                                <?php endif; ?>
+                                <?php if ( ! empty( $item['colour'] ) ) : ?>
+                                    <p class="colour"><strong>Top Colour: </strong><?php echo esc_html( $item['colour'] ); ?></p>
+                                <?php endif; ?>
+                                <?php if ( ! empty( $item['base'] ) ) : ?>
+                                    <p class="base"><strong>Base: </strong><?php echo esc_html( $item['base'] ); ?></p>
+                                <?php endif; ?>
+                                <?php if ( ! empty( $item['veneer'] ) ) : ?>
+                                    <p class="veneer"><strong>Metal Edge Veneer: </strong><?php echo esc_html( $item['veneer'] ); ?></p>
+                                <?php endif; ?>
+                                <?php if ( ! empty( $item['model'] ) ) : ?>
+                                    <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
+                                <?php endif; ?>
+                            </div>
+                            <?php
+                        }
+
+                        echo '</div>';
+                        
+                        if ( $user_token ) {
+                            echo $this->listControlButtons();
+                        }
+                    
+                    echo '</div>';
+
+                }
+
+                echo '</div>';
+
+                return ob_get_clean();
+
+            } else {
+
+                return '<p>Your wishlist is empty. To start, view our products pages.</p>';
+
+            }
+        }
+
+        public function shareTokenList() {
 
             // Check for share token (rewrite path OR query string)
             $share_token_param = get_query_var( 'tm_compare_key' );
-var_dump('shortcode called with token: ' . $share_token_param); // Debugging line
+
             // Early return if no share token
             if ( empty( $share_token_param ) ) {
                 return '<p>Your wishlist is empty. To start, view our products pages.</p>';
@@ -87,7 +205,7 @@ var_dump('shortcode called with token: ' . $share_token_param); // Debugging lin
 
             // Fetch comparison data based on share token
             $row = $this->getWishlistData($share_token_param);
-var_dump('row data: ' . print_r($row, true)); // Debugging line
+
             // Early return if no data
             if ( ! $row || empty( $row['data'] ) ) {
                 return '<p>Your wishlist is empty. To start, view our products pages.</p>';
@@ -216,6 +334,40 @@ var_dump('row data: ' . print_r($row, true)); // Debugging line
 
             return ob_get_clean();
 
+        }
+
+        public function activeWishlistControls() {
+            return '<div class="list-control-buttons">stub for list control buttons</div>';
+        }
+
+        public function listControlButtons() {
+
+            $buttonData = [
+                'share_wishllist' => [
+                    'label' => 'Share Wishlist',
+                    'action' => 'share_wishlist',
+                ],
+                'clear_wishlist' => [
+                    'label' => 'Clear Wishlist',
+                    'action' => 'clear_wishlist',
+                ],
+                'delete_list_all' => [
+                    'label' => 'Delete List (ALL)',
+                    'action' => 'delete_list_all',
+                ],
+                'delete_list_me' => [
+                    'label' => 'Delete List (ME)',
+                    'action' => 'delete_list_me',
+                ],
+            ];
+            
+            $buttons = array_map(function($button) {
+                    
+                return '<button id="' . esc_attr($button['action']) . '" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">' . esc_html($button['label']) . '</button>';
+            
+            }, $buttonData);
+
+            return '<div class="list-control-buttons">' . implode(' ', $buttons) . '</div>';
         }
 
         /**
