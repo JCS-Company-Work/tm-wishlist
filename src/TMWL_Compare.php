@@ -175,7 +175,7 @@
                         echo '</div>';
                         
                         if ( $user_token ) {
-                            echo $this->listControlButtons();
+                            echo $this->listControlButtons($share_token);
                         }
                     
                     echo '</div>';
@@ -219,15 +219,6 @@
                 return '<p>Your wishlist is empty. You can add products to your wishlist from the product pages.</p>';
             }
 
-            // Get share token
-            $share_token = $row['share_token'] ?? '';
-
-            // Construct share URL
-            $share_url = '';
-            if($share_token) {
-                $share_url = trailingslashit( home_url( 'wishlist' ) ) . 'share/' . rawurlencode( $share_token ) . '/';
-            }
-
             // Render comparison table
             ob_start();
 
@@ -238,99 +229,57 @@
                 echo '<p>This is a view only wishlist. To create your own wishlist, please add products from the product pages.</p>';
             }
 
-            echo '<div class="tm-compare-list">';
-
-            // Loop through products and display details
-            foreach ( $products as $item ) {
-
-                $image = self::createLayeredImage( $item['layerIds'], $item['productName'] );
-
-                // Check if URL has params; if not, build from attributes
-                $url = self::setUrl($item);
-
-                ?>
-
-                <div class="tm-compare-item" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>">
-                    <a href="<?php echo esc_url( $url ); ?>">
-                        <?php echo $image; ?>
-                        <h2 class="woocommerce-loop-product__title"><?php echo esc_html( $item['productName'] ); ?></h2>
-                    </a>
-                    <?php if ( ! empty( $item['price'] ) ) : ?>
-                        <p class="price"><strong>Price: </strong><?php echo esc_html( $item['price'] ); ?></p>
-                    <?php endif; ?>
-                    <?php if ( ! empty( $item['colour'] ) ) : ?>
-                        <p class="colour"><strong>Top Colour: </strong><?php echo esc_html( $item['colour'] ); ?></p>
-                    <?php endif; ?>
-                    <?php if ( ! empty( $item['base'] ) ) : ?>
-                        <p class="base"><strong>Base: </strong><?php echo esc_html( $item['base'] ); ?></p>
-                    <?php endif; ?>
-                    <?php if ( ! empty( $item['veneer'] ) ) : ?>
-                        <p class="veneer"><strong>Metal Edge Veneer: </strong><?php echo esc_html( $item['veneer'] ); ?></p>
-                    <?php endif; ?>
-                    <?php if ( ! empty( $item['model'] ) ) : ?>
-                        <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
-                    <?php endif; ?>
-                    <?php if ( $isOwner ) : ?>
-                        <i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
-                            data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>
-                    <?php endif; ?>
-                </div>
-
-                <?php
-            }
-            echo '</div>';
-
-            if ( $isOwner ) : ?>
-
-                <div class="compare-buttons">
-                    <div class="compare-share">
-                        <button type="button" class="button share-button level-02" id="wishlist-share-btn" data-url="<?php echo esc_attr($share_url); ?>">
-                            Share Wishlist
-                        </button>
-                        <span class="share-copied" style="display:none;">Copied!</span>
-                    </div>
-                    <button type="button" class="button clear-compare level-02">Clear Wishlist</button>
-                </div>
-                <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    var shareBtn = document.getElementById('wishlist-share-btn');
-                    var shareCopied = document.querySelector('.share-copied');
-                    if (!shareBtn) return;
-                    shareBtn.addEventListener('click', function() {
-                        var url = shareBtn.getAttribute('data-url');
-                        if (navigator.share) {
-                            navigator.share({
-                                title: 'My TailorMade Wishlist',
-                                url: url
-                            }).catch(function(){});
-                        } else {
-                            // Fallback: copy to clipboard
-                            if (navigator.clipboard) {
-                                navigator.clipboard.writeText(url).then(function() {
-                                    if (shareCopied) {
-                                        shareCopied.style.display = 'inline';
-                                        setTimeout(function(){ shareCopied.style.display = 'none'; }, 1500);
-                                    }
-                                });
-                            } else {
-                                // Older fallback
-                                var tempInput = document.createElement('input');
-                                tempInput.value = url;
-                                document.body.appendChild(tempInput);
-                                tempInput.select();
-                                document.execCommand('copy');
-                                document.body.removeChild(tempInput);
-                                if (shareCopied) {
-                                    shareCopied.style.display = 'inline';
-                                    setTimeout(function(){ shareCopied.style.display = 'none'; }, 1500);
-                                }
-                            }
-                        }
-                    });
-                });
-                </script>
+            echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token_param) . '">';
                 
-            <?php endif; 
+                echo '<div class="tm-compare-list">';
+
+                    // Loop through products and display details
+                    foreach ( $products as $item ) {
+
+                        $image = self::createLayeredImage( $item['layerIds'], $item['productName'] );
+
+                        // Check if URL has params; if not, build from attributes
+                        $url = self::setUrl($item);
+
+                        ?>
+
+                        <div class="tm-compare-item" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>">
+                            <a href="<?php echo esc_url( $url ); ?>">
+                                <?php echo $image; ?>
+                                <h2 class="woocommerce-loop-product__title"><?php echo esc_html( $item['productName'] ); ?></h2>
+                            </a>
+                            <?php if ( ! empty( $item['price'] ) ) : ?>
+                                <p class="price"><strong>Price: </strong><?php echo esc_html( $item['price'] ); ?></p>
+                            <?php endif; ?>
+                            <?php if ( ! empty( $item['colour'] ) ) : ?>
+                                <p class="colour"><strong>Top Colour: </strong><?php echo esc_html( $item['colour'] ); ?></p>
+                            <?php endif; ?>
+                            <?php if ( ! empty( $item['base'] ) ) : ?>
+                                <p class="base"><strong>Base: </strong><?php echo esc_html( $item['base'] ); ?></p>
+                            <?php endif; ?>
+                            <?php if ( ! empty( $item['veneer'] ) ) : ?>
+                                <p class="veneer"><strong>Metal Edge Veneer: </strong><?php echo esc_html( $item['veneer'] ); ?></p>
+                            <?php endif; ?>
+                            <?php if ( ! empty( $item['model'] ) ) : ?>
+                                <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
+                            <?php endif; ?>
+                            <?php if ( $isOwner ) : ?>
+                                <i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
+                                    data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php
+                    }
+
+                echo '</div>';
+
+                // If owner, show control buttons (share, clear, delete)
+                if ( $isOwner ) {
+                    echo $this->listControlButtons($share_token_param);
+                }
+
+            echo '</div>';
 
             return ob_get_clean();
 
@@ -340,7 +289,7 @@
             return '<div class="list-control-buttons">stub for list control buttons</div>';
         }
 
-        public function listControlButtons() {
+        public function listControlButtons($share_token) {
 
             $buttonData = [
                 'share_wishllist' => [
@@ -361,9 +310,12 @@
                 ],
             ];
             
-            $buttons = array_map(function($button) {
+            $buttons = array_map(function($button) use($share_token) {
+
+                // Add data-url based on action value
+                $data_url = $button['action'] === 'share_wishlist' ? (trailingslashit( home_url( 'wishlist' ) ) . 'share/' . rawurlencode( $share_token ) . '/') : '';
                     
-                return '<button id="' . esc_attr($button['action']) . '" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">' . esc_html($button['label']) . '</button>';
+                return '<button id="' . esc_attr($button['action']) . '" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" data-url="' . esc_url($data_url) . '" role="button" aria-pressed="false">' . esc_html($button['label']) . '</button>';
             
             }, $buttonData);
 

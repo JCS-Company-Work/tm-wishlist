@@ -33,11 +33,14 @@ class TMCompare {
 
                     // Get share token from closest wrapper data attribute
                     const share_token = e.currentTarget.closest('.tm-compare-list-wrapper').dataset.shareToken;
-
+                    
                     // Query appropriate API based on action
                     switch(action) {
                         case 'share_wishlist':
                             this.shareWishlist(e.currentTarget);
+
+                            // look at triggering share button code in shareWishlist stub method below. Bear in midn how it would need to work in share token list.
+                            // are these going to be uniformly 'view only' or can owners still edit? Former would be simpler.
                             break;
                         case 'clear_wishlist':
                             this.triggerAction(`wp-json/tm-wishlist/v1/lists/${share_token}/items`, 'DELETE', share_token);
@@ -85,7 +88,7 @@ class TMCompare {
                 wrapper.querySelector('.tm-compare-list').innerHTML = '<p>Your wishlist is empty.</p>';
 
             } else if(data.data === null) {
-                console.log('yrsdf', data);
+
                 // If data is null, it means the list was deleted, so remove the entire wrapper
                 wrapper.remove();
 
@@ -100,6 +103,40 @@ class TMCompare {
             console.error('Error performing action:', error);
             // Handle error (e.g. show error message)
         });
+    }
+
+    shareWishlist(shareBtn) {
+        
+        var url = shareBtn.getAttribute('data-url');
+            if (navigator.share) {
+                navigator.share({
+                    title: 'My TailorMade Wishlist',
+                    url: url
+                }).catch(function(){});
+            } else {
+                // Fallback: copy to clipboard
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(url).then(function() {
+                        if (shareCopied) {
+                            shareCopied.style.display = 'inline';
+                            setTimeout(function(){ shareCopied.style.display = 'none'; }, 1500);
+                        }
+                    });
+                } else {
+                    // Older fallback
+                    var tempInput = document.createElement('input');
+                    tempInput.value = url;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+                    if (shareCopied) {
+                        shareCopied.style.display = 'inline';
+                        setTimeout(function(){ shareCopied.style.display = 'none'; }, 1500);
+                    }
+                }
+            }
+
     }
 
 }

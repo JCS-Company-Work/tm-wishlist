@@ -50,12 +50,12 @@ class TMAddItems {
     this.init();
 
     // On page load, check for cookie and clear localStorage if missing
-    const cookieToken = document.cookie.match(/(?:^|; )tm_wishlist_share_token=([^;]*)/);
-    console.log(cookieToken);
-    if (!cookieToken) {
-      localStorage.removeItem('tm_wishlist_share_token');
-      localStorage.removeItem(this.STORAGE_KEY);
-    }
+    // const cookieToken = document.cookie.match(/(?:^|; )tm_wishlist_share_token=([^;]*)/);
+    // console.log(cookieToken);
+    // if (!cookieToken) {
+    //   localStorage.removeItem('tm_wishlist_share_token');
+    //   localStorage.removeItem(this.STORAGE_KEY);
+    // }
     
   }
 
@@ -200,12 +200,42 @@ class TMAddItems {
    * Also dispatches a `tmWishlistUpdated` event on `document`.
    * @param {TMCompareItem[]} configs
    */
+  // saveConfigs(configs) {
+  //   localStorage.setItem(this.STORAGE_KEY, JSON.stringify(configs));
+  //   if (this.SYNC_URL) {
+  //     this.syncToServer(configs);
+  //   }
+  //   document.dispatchEvent(new Event('tmWishlistUpdated'));
+  // }
+
   saveConfigs(configs) {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(configs));
+
+    // Get the active share token
+    const shareTokenMatch = document.cookie.match(/(?:^|; )tm_wishlist_share_token=([^;]*)/);
+    const shareToken = shareTokenMatch ? shareTokenMatch[1] : null;
+    
+    // No active list
+    if (!shareToken) return; 
+
+    // Get all lists from localStorage or initialize
+    let allLists = {};
+    try {
+      allLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+    } catch {
+      allLists = {};
+    }
+
+    // Update only the active list
+    allLists[shareToken] = configs;
+
+    // Save back to localStorage
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allLists));
+
     if (this.SYNC_URL) {
       this.syncToServer(configs);
     }
     document.dispatchEvent(new Event('tmWishlistUpdated'));
+
   }
 
   /**

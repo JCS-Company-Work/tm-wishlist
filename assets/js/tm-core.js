@@ -107,19 +107,19 @@ const clearWishlistStorage = () => {
 /**
  * Update wishlist links in the DOM with share token
  */
-// const updateWishlistLinks = () => {
+const updateWishlistLinks = () => {
 
-//     // Get share token from local storage
-//     const token = localStorage.getItem('tm_wishlist_share_token');
+    // Get share token from local storage
+    const token = localStorage.getItem('tm_wishlist_share_token');
 
-//     // Update all wishlist links
-//     if (token) {
+    // Update all wishlist links
+    if (token) {
 
-//         // Update hrefs
-//         document.querySelectorAll('a[href=\"/wishlist\"]')
-//             .forEach(link => link.href = `/wishlist/share/${token}/`);
-//     }
-// }
+        // Update hrefs
+        document.querySelectorAll('a[href=\"/wishlist\"]')
+            .forEach(link => link.href = `/wishlist/share/${token}/`);
+    }
+}
 
 /**
  * Get cookie value by name
@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
     checkForCookieAndClearStorage();
 
     // Update wishlist links with share token
-    //updateWishlistLinks();
+    updateWishlistLinks();
     
     // Initialize header counter on load
     //try { updateHeaderCounter(); } catch {}
