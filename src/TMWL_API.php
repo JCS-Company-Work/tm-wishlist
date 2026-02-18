@@ -106,6 +106,27 @@
                 $user_token = 'user-' . substr(str_shuffle('abcdefghijklmnopqrstuvwxyz0123456789'), 0, 8);
             }
 
+
+            // Generate a unique list name for this user
+            $base_name = 'My Wishlist';
+            $existing_names = $wpdb->get_col(
+                $wpdb->prepare(
+                    "SELECT list_name FROM {$table_name} WHERE user_token = %s AND list_name LIKE %s",
+                    $user_token,
+                    $base_name . '%'
+                )
+            );
+            $max_num = 0;
+            foreach ($existing_names as $name) {
+                if (preg_match('/^' . preg_quote($base_name, '/') . ' #(\d+)$/', $name, $matches)) {
+                    $num = intval($matches[1]);
+                    if ($num > $max_num) {
+                        $max_num = $num;
+                    }
+                }
+            }
+            $new_list_name = $base_name . ' #' . ($max_num + 1);
+
             // Generate new share token
             $share_token = bin2hex(random_bytes(10));
 
@@ -117,21 +138,23 @@
                     'share_token' => $share_token,
                     'data' => wp_json_encode([]),
                     'updated_at' => current_time('mysql'),
-                    'list_name' => 'New List',
+                    'list_name' => $new_list_name,
                 ],
                 ['%s', '%s', '%s', '%s', '%s']
             );
 
-            // Prepare blank list HTML
+
+            // Use listControlButtons from TMWL_Compare for unified button markup
+            if ( ! class_exists( '\TMWishlist\TMWL_Compare' ) ) {
+                require_once dirname( __FILE__ ) . '/TMWL_Compare.php';
+            }
+            $compare = new \TMWishlist\TMWL_Compare();
+            $buttons_html = $compare->listControlButtons($share_token);
+
             $list_html = '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">' .
-                '<h3>New List</h3>' .
+                '<h3>' . esc_html($new_list_name) . '</h3>' .
                 '<div class="tm-compare-list"><p>Your wishlist is empty. To start, view our products pages.</p></div>' .
-                '<div class="list-control-buttons">' .
-                '<button id="share_wishlist" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-url="' . esc_url(trailingslashit(home_url('wishlist')) . 'share/' . rawurlencode($share_token) . '/') . '" role="button" aria-pressed="false">Share Wishlist</button>' .
-                '<button id="clear_wishlist" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" role="button" aria-pressed="false">Clear Wishlist</button>' .
-                '<button id="delete_list_all" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" role="button" aria-pressed="false">Delete List (ALL)</button>' .
-                '<button id="delete_list_me" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" role="button" aria-pressed="false">Delete List (ME)</button>' .
-                '</div>' .
+                $buttons_html .
                 '</div>';
 
             return rest_ensure_response([
@@ -313,9 +336,9 @@
             // Table name
             $table_name = TMWL_DB::get_table_name();
 
-            // Find rows by user_token
+            // Find rows by user_token, most recent first
             $rows = $wpdb->get_results(
-                $wpdb->prepare("SELECT * FROM {$table_name} WHERE user_token = %s", $user_token)
+                $wpdb->prepare("SELECT * FROM {$table_name} WHERE user_token = %s ORDER BY created_at DESC", $user_token)
             );
 
             // If no row found, return empty data with share token for potential new entry

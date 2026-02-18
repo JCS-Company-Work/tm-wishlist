@@ -48,7 +48,6 @@
                     
 
             } else if(isset($_SERVER['REQUEST_URI']) && (rtrim($_SERVER['REQUEST_URI'], '/') === '/wishlist')) {
-                echo 'wishlist page';
                 
                 return $this->getUserLists();
                 
@@ -137,13 +136,11 @@
                     // Validate products data
                     $products = $list['data'];
 
-                    // Skip if products data is not an array or is empty
-                    //if ( !is_array($products) || empty($products) ) continue;
-
                     $user_token = $list['user_token'] ?? '';
                     $share_token = $list['share_token'] ?? '';
                     $list_name = $list['list_name'];
                     echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">';
+                    echo $this->openCloseActive();
                     echo '<h3>' . esc_html($list_name) . '</h3>';
                     echo '<div class="tm-compare-list">';
 
@@ -398,6 +395,18 @@
             }, $buttonData);
 
             return '<div class="list-control-buttons">' . implode(' ', $buttons) . '</div>';
+        }
+
+        /**
+         * Open/Close toggle and active indicator HTML for compare lists
+         *
+         * @return string
+         */
+        public function openCloseActive(){
+
+            // This function returns HTML for the open/close toggle and active indicator for compare lists
+            return '<div class="list-controls"><span class="list-active">&#10003;</span><span class="list-toggle"></span></div>';
+            
         }
 
         /**
