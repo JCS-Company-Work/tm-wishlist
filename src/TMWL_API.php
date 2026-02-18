@@ -21,7 +21,14 @@
          */
         public function register_routes() {
 
-            // Create a new list
+            // Create new list
+            register_rest_route( 'tm-wishlist/v1', '/lists/new', [
+                'methods'  => 'POST',
+                'callback' => [ $this, 'create_new_list' ],
+                'permission_callback' => '__return_true',
+            ]);
+
+            // Save current list
             register_rest_route( 'tm-wishlist/v1', '/lists', [
                 'methods'  => 'POST',
                 'callback' => [ $this, 'save_comparison' ],
@@ -75,6 +82,63 @@
                 'methods'  => 'GET',
                 'callback' => [ $this, 'generate_user_token' ],
                 'permission_callback' => '__return_true',
+            ]);
+        
+        }
+
+        public function create_new_list( \WP_REST_Request $request ) {
+
+            global $wpdb;
+
+            // Ensure $wpdb is available
+            if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
+                return new \WP_Error( 'db_unavailable', 'Database not available', [ 'status' => 500 ] );
+            }
+
+            $table_name = TMWL_DB::get_table_name();
+
+            // Get user token from request or cookie
+            $user_token = sanitize_text_field($request->get_param('user_token') ?? '');
+            if (empty($user_token) && isset($_COOKIE['tm_wishlist_user_token'])) {
+                $user_token = sanitize_text_field($_COOKIE['tm_wishlist_user_token']);
+            }
+            if (empty($user_token)) {
+                $user_token = 'user-' . substr(str_shuffle('abcdefghijklmnopqrstuvwxyz0123456789'), 0, 8);
+            }
+
+            // Generate new share token
+            $share_token = bin2hex(random_bytes(10));
+
+            // Insert new row with blank data
+            $wpdb->insert(
+                $table_name,
+                [
+                    'user_token' => $user_token,
+                    'share_token' => $share_token,
+                    'data' => wp_json_encode([]),
+                    'updated_at' => current_time('mysql'),
+                    'list_name' => 'New List',
+                ],
+                ['%s', '%s', '%s', '%s', '%s']
+            );
+
+            // Prepare blank list HTML
+            $list_html = '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">' .
+                '<h3>New List</h3>' .
+                '<div class="tm-compare-list"><p>Your wishlist is empty. To start, view our products pages.</p></div>' .
+                '<div class="list-control-buttons">' .
+                '<button id="share_wishlist" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-url="' . esc_url(trailingslashit(home_url('wishlist')) . 'share/' . rawurlencode($share_token) . '/') . '" role="button" aria-pressed="false">Share Wishlist</button>' .
+                '<button id="clear_wishlist" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" role="button" aria-pressed="false">Clear Wishlist</button>' .
+                '<button id="delete_list_all" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" role="button" aria-pressed="false">Delete List (ALL)</button>' .
+                '<button id="delete_list_me" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" role="button" aria-pressed="false">Delete List (ME)</button>' .
+                '</div>' .
+                '</div>';
+
+            return rest_ensure_response([
+                'success' => true,
+                'share_token' => $share_token,
+                'user_token' => $user_token,
+                'list_html' => $list_html,
             ]);
         }
 

@@ -75,7 +75,7 @@
 
             // Prepare and execute query
             $sql = $wpdb->prepare(
-                "SELECT data FROM $table_name WHERE share_token = %s",
+                "SELECT * FROM $table_name WHERE share_token = %s",
                 $share_token
             );
 
@@ -123,7 +123,13 @@
                 // Output buffer for rendering lists
                 ob_start();
 
-                echo '<div class="tm-wishlist-multiple-lists">';
+                // Determine active list based on cookie and available lists
+                $active_list_name = $this->determineActiveList($data['lists']);
+
+                // Render active list controls with active list name
+                echo $this->activeWishlistControls('multi-list', $active_list_name);
+
+                echo '<div class="tm-wishlist-lists">';
 
                 // Loop through lists and render each one
                 foreach ($data['lists'] as $list) {
@@ -132,7 +138,7 @@
                     $products = $list['data'];
 
                     // Skip if products data is not an array or is empty
-                    if ( !is_array($products) || empty($products) ) continue;
+                    //if ( !is_array($products) || empty($products) ) continue;
 
                     $user_token = $list['user_token'] ?? '';
                     $share_token = $list['share_token'] ?? '';
@@ -229,55 +235,62 @@
                 echo '<p>This is a view only wishlist. To create your own wishlist, please add products from the product pages.</p>';
             }
 
-            echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token_param) . '">';
+            // Render active list controls with active list name
+            echo $this->activeWishlistControls('single-list', $row['list_name']);
+
+            echo '<div class="tm-wishlist-lists">';
+
+                echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token_param) . '">';
+                    
+                    echo '<div class="tm-compare-list">';
+
+                        // Loop through products and display details
+                        foreach ( $products as $item ) {
+
+                            $image = self::createLayeredImage( $item['layerIds'], $item['productName'] );
+
+                            // Check if URL has params; if not, build from attributes
+                            $url = self::setUrl($item);
+
+                            ?>
+
+                            <div class="tm-compare-item" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>">
+                                <a href="<?php echo esc_url( $url ); ?>">
+                                    <?php echo $image; ?>
+                                    <h2 class="woocommerce-loop-product__title"><?php echo esc_html( $item['productName'] ); ?></h2>
+                                </a>
+                                <?php if ( ! empty( $item['price'] ) ) : ?>
+                                    <p class="price"><strong>Price: </strong><?php echo esc_html( $item['price'] ); ?></p>
+                                <?php endif; ?>
+                                <?php if ( ! empty( $item['colour'] ) ) : ?>
+                                    <p class="colour"><strong>Top Colour: </strong><?php echo esc_html( $item['colour'] ); ?></p>
+                                <?php endif; ?>
+                                <?php if ( ! empty( $item['base'] ) ) : ?>
+                                    <p class="base"><strong>Base: </strong><?php echo esc_html( $item['base'] ); ?></p>
+                                <?php endif; ?>
+                                <?php if ( ! empty( $item['veneer'] ) ) : ?>
+                                    <p class="veneer"><strong>Metal Edge Veneer: </strong><?php echo esc_html( $item['veneer'] ); ?></p>
+                                <?php endif; ?>
+                                <?php if ( ! empty( $item['model'] ) ) : ?>
+                                    <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
+                                <?php endif; ?>
+                                <?php if ( $isOwner ) : ?>
+                                    <i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
+                                        data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>
+                                <?php endif; ?>
+                            </div>
+
+                            <?php
+                        }
+
+                    echo '</div>';
                 
-                echo '<div class="tm-compare-list">';
-
-                    // Loop through products and display details
-                    foreach ( $products as $item ) {
-
-                        $image = self::createLayeredImage( $item['layerIds'], $item['productName'] );
-
-                        // Check if URL has params; if not, build from attributes
-                        $url = self::setUrl($item);
-
-                        ?>
-
-                        <div class="tm-compare-item" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>">
-                            <a href="<?php echo esc_url( $url ); ?>">
-                                <?php echo $image; ?>
-                                <h2 class="woocommerce-loop-product__title"><?php echo esc_html( $item['productName'] ); ?></h2>
-                            </a>
-                            <?php if ( ! empty( $item['price'] ) ) : ?>
-                                <p class="price"><strong>Price: </strong><?php echo esc_html( $item['price'] ); ?></p>
-                            <?php endif; ?>
-                            <?php if ( ! empty( $item['colour'] ) ) : ?>
-                                <p class="colour"><strong>Top Colour: </strong><?php echo esc_html( $item['colour'] ); ?></p>
-                            <?php endif; ?>
-                            <?php if ( ! empty( $item['base'] ) ) : ?>
-                                <p class="base"><strong>Base: </strong><?php echo esc_html( $item['base'] ); ?></p>
-                            <?php endif; ?>
-                            <?php if ( ! empty( $item['veneer'] ) ) : ?>
-                                <p class="veneer"><strong>Metal Edge Veneer: </strong><?php echo esc_html( $item['veneer'] ); ?></p>
-                            <?php endif; ?>
-                            <?php if ( ! empty( $item['model'] ) ) : ?>
-                                <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
-                            <?php endif; ?>
-                            <?php if ( $isOwner ) : ?>
-                                <i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
-                                    data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>
-                            <?php endif; ?>
-                        </div>
-
-                        <?php
+                    // If owner, show control buttons (share, clear, delete)
+                    if ( $isOwner ) {
+                        echo $this->listControlButtons($share_token_param);
                     }
 
                 echo '</div>';
-
-                // If owner, show control buttons (share, clear, delete)
-                if ( $isOwner ) {
-                    echo $this->listControlButtons($share_token_param);
-                }
 
             echo '</div>';
 
@@ -285,10 +298,75 @@
 
         }
 
-        public function activeWishlistControls() {
-            return '<div class="list-control-buttons">stub for list control buttons</div>';
+        /**
+         * Test the active wishlist controls HTML output with different active list names
+         *
+         * @param string $type
+         * @param string $active_list_name
+         * @return void
+         */
+        public function activeWishlistControls($type, $active_list_name) {
+
+            // Build active list name HTML if active list exists
+            $active_list_html = !empty($active_list_name)
+                ? '<p class="active-list-name">Active Wishlist: </p><span class="active-list-span button">' . esc_html($active_list_name) . '</span>'
+                : '';
+
+            // Build buttons HTML based on type (single-list or multi-list)    
+            $buttons_html = '';
+
+            // If multi list page we don;t need to show manage lists button as we are already there
+            if ($type === 'multi-list') {
+                $buttons_html .= '<button id="create_list" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Create New List</button>';
+            } else { 
+                // Otherwise show both buttons
+                $buttons_html .= '<button id="create_list" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Create New List</button>';
+                $buttons_html .= '<a href="/wishlist" id="manage_lists" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Manage Lists</a>';
+            }
+
+            // Return combined HTML
+            return '<div class="active-list-controls">' . $active_list_html . $buttons_html . '</div>';
         }
 
+        /**
+         * Determine the active list based on the share token in cookies
+         *
+         * @param array $data (array of lists with share tokens and names)
+         * @return string
+         */
+        public function determineActiveList($data) {
+
+            // Get active share token from cookie
+            $active_share_token = $_COOKIE['tm_wishlist_share_token'] ?? '';
+
+            // Initialize active list name
+            $active_list_name = '';
+
+            // Loop through lists to find the one that matches the active share token
+            if (!empty($active_share_token) && !empty($data) && is_array($data)) {
+
+                foreach ($data as $list) {
+                    if (
+                        isset($list['share_token']) &&
+                        $list['share_token'] === $active_share_token
+                    ) {
+                        $active_list_name = $list['list_name'] ?? '';
+                        break;
+                    }
+                }
+            }
+
+            // Return the active list name
+            return $active_list_name;
+
+        }
+
+        /**
+         * List control buttons (share, clear, delete) with dynamic data-url for share button
+         *
+         * @param string $share_token
+         * @return string
+         */
         public function listControlButtons($share_token) {
 
             $buttonData = [

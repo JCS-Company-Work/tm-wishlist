@@ -145,15 +145,73 @@
             
         }
 
+        /**
+         * Test the list control buttons HTML output
+         *
+         * @return void
+         */
         public function test_list_controls_create_html() {
+            
+            // Simulate a share token for testing
+            $share_token = 'test-token';
+
+            // Create instance of TMWL_Compare
             $compare = new TMWL_Compare();
-            $output = $compare->listControlButtons();
-            $this->assertStringContainsString('stub for list control buttons', $output, 'List control buttons should return stub text');
+
+            // Call the listControlButtons method to get output
+            $output = $compare->listControlButtons($share_token);
+
+            // Assert that the output contains the expected control button div
+            $this->assertStringContainsString('<div class="list-control-buttons">', $output, 'List control buttons should return control button div');
+            
+            // Assert that all expected buttons are present in the output
+            $this->assertStringContainsString('<button id="share_wishlist"', $output, 'List control buttons should return share button');
+            $this->assertStringContainsString('<button id="clear_wishlist"', $output, 'List control buttons should return clear wishlist button');
+            $this->assertStringContainsString('<button id="delete_list_all"', $output, 'List control buttons should return delete all button');
+            $this->assertStringContainsString('<button id="delete_list_me"', $output, 'List control buttons should return delete me button');
         }
 
-        public function test_active_wishlist_controls() {
+        /**
+         * Test the active wishlist controls HTML output on single list page (wishlist/share/[key])
+         *
+         * @return void
+         */
+        public function test_single_active_wishlist_controls() {
+
+            // Create instance of TMWL_Compare
             $compare = new TMWL_Compare();
-            $output = $compare->activeWishlistControls();
-            $this->assertStringContainsString('stub for list control buttons', $output, 'Active wishlist controls should return stub text');
+
+            // Call the activeWishlistControls method to get output
+            $output = $compare->activeWishlistControls('single-list', 'My Active List');
+
+            // Assert that the output contains the expected control button div
+            $this->assertStringContainsString('<div class="active-list-controls">', $output, 'List control buttons should return active list control div');
+            
+            // Assert that all expected buttons are present in the output
+            $this->assertStringContainsString('<button id="create_list"', $output, 'List control buttons should return create list button');
+            $this->assertStringContainsString('<a href="/wishlist" id="manage_lists"', $output, 'List control buttons should return manage lists button');
+           
+        }
+        
+        /**
+         * Test the active wishlist controls HTML output on multi list page (/wishlist)
+         *
+         * @return void
+         */
+        public function test_multi_active_wishlist_controls() {
+
+            // Create instance of TMWL_Compare
+            $compare = new TMWL_Compare();
+
+            // Call the activeWishlistControls method to get output
+            $output = $compare->activeWishlistControls('multi-list', 'My Multi Lists');
+
+            // Assert that the output contains the expected control button div
+            $this->assertStringContainsString('<div class="active-list-controls">', $output, 'List control buttons should return active list control div');
+            
+            // Assert that all expected buttons are present in the output
+            $this->assertStringContainsString('<button id="create_list"', $output, 'List control buttons should return create list button');
+            $this->assertStringNotContainsString('<a href="/wishlist" id="manage_lists"', $output, 'List control buttons should return manage lists button');
+           
         }
     }

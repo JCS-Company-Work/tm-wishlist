@@ -336,6 +336,7 @@ class TMAddItems {
    * If missing, generate a new one (UUID).
    */
   async ensureUserToken() {
+    
     let userToken = localStorage.getItem('tm_wishlist_user_token');
     if (!userToken) {
       try {
@@ -344,10 +345,9 @@ class TMAddItems {
         const data = await res.json();
         const serverToken = data?.user_token || null;
         if (!serverToken) return null;
-         // Generate a short random string
-      //userToken = 'user-' + Math.random().toString(36).substr(2, 8);
-      localStorage.setItem('tm_wishlist_user_token', serverToken);
-      document.cookie = `tm_wishlist_user_token=${serverToken}; path=/; SameSite=Lax; max-age=31536000`;
+
+        localStorage.setItem('tm_wishlist_user_token', serverToken);
+        document.cookie = `tm_wishlist_user_token=${serverToken}; path=/; SameSite=Lax; max-age=31536000`;
         return serverToken;
       } catch(err) {
         console.error('Failed to fetch user token:', err);  
