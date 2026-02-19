@@ -141,7 +141,7 @@
                     $list_name = $list['list_name'];
                     echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">';
                     echo $this->openCloseActive();
-                    echo '<h3 class="tm-compare-list-name">' . esc_html($list_name) . '</h3>';
+                    echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($list_name) . '</h3><button type="button" class="edit-list-name" aria-label="Edit list name">edit</button></div>';
                     echo '<div class="tm-compare-list">';
 
                         foreach ($products as $item) {

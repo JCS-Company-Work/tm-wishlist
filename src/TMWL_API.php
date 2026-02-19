@@ -383,11 +383,28 @@
             }
 
             // Extract share_token from request body
-            $share_token = $request->get_param('share_token');
+            $share_token = sanitize_text_field($request->get_param('share_token') ?? '');
+
+            // Get user token from request body
+            $user_token = sanitize_text_field($request->get_param('user_token') ?? '');
+
             // Extract name from request body
-            $list_name = $request->get_param('list_name');
+            $list_name = sanitize_text_field($request->get_param('list_name') ?? '');
+            
             // Get table name
             $table_name = TMWL_DB::get_table_name();
+
+            // Check for duplicate name for this user (excluding current list)
+            $existing = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$table_name} WHERE user_token = %s AND list_name = %s AND share_token != %s",
+                    $user_token, $list_name, $share_token
+                )
+            );
+
+            if ($existing > 0) {
+                return new \WP_Error('duplicate_name', 'List name already exists, please choose a unique name.', ['status' => 409]);
+            }
 
             // Update the name for the given share_token
             $wpdb->update(
