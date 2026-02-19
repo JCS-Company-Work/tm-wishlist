@@ -12,6 +12,12 @@ class TMCompare {
 
         this.createList();
 
+        this.toggleList();
+
+        this.setActiveListOnInit();
+
+        this.updateActiveList();
+
     }
 
     addControlBtnListeners() {
@@ -104,37 +110,57 @@ class TMCompare {
         });
     }
 
+    /**
+     * Handles sharing the wishlist link.
+     * Uses the Web Share API if available, otherwise copies the share URL to the clipboard.
+     * @param {HTMLElement} shareBtn - The share button element that was clicked.
+     */
     shareWishlist(shareBtn) {
-        
-        var url = shareBtn.getAttribute('data-url');
 
+        // Extract share URL from data attribute
+        const url = shareBtn.getAttribute('data-url');
+
+        // If Web Share API is supported, use it to share the URL
         if (navigator.share) {
+
+            // Extract list name for sharing title
+            const listName = shareBtn.closest('.tm-compare-list-wrapper').querySelector('.tm-compare-list-name').textContent || 'My Wishlist';
+
+            // Use Web Share API to share the URL with the list name as title
             navigator.share({
-                title: 'My TailorMade Wishlist',
+                title: listName,
                 url: url
             }).catch(function(){});
+
         } else {
-            // Fallback: copy to clipboard
+
+            // Fallback: copy to clipboard if Web Share API is not supported
             if (navigator.clipboard) {
+
                 navigator.clipboard.writeText(url).then(function() {
                     if (shareCopied) {
                         shareCopied.style.display = 'inline';
                         setTimeout(function(){ shareCopied.style.display = 'none'; }, 1500);
                     }
                 });
+
             } else {
-                // Older fallback
-                var tempInput = document.createElement('input');
+
+                // Older fallback for browsers that do not support navigator.clipboard
+                const tempInput = document.createElement('input');
                 tempInput.value = url;
                 document.body.appendChild(tempInput);
                 tempInput.select();
                 document.execCommand('copy');
                 document.body.removeChild(tempInput);
+
                 if (shareCopied) {
                     shareCopied.style.display = 'inline';
                     setTimeout(function(){ shareCopied.style.display = 'none'; }, 1500);
                 }
+
             }
+            
         }
 
     }
@@ -177,6 +203,138 @@ class TMCompare {
 
             });
         }
+    }
+
+    toggleList() {
+
+        // Add click listener to list toggle buttons
+        const toggleButtons = document.querySelectorAll('.list-toggle');
+        
+        if(toggleButtons.length > 0) {
+
+            toggleButtons.forEach((btn) => {
+
+                btn.addEventListener('click', () => {
+
+                    // Toggle active class on button
+                    btn.classList.toggle('active');
+
+                    // Toggle visibility of the compare list
+                    const compareList = btn.closest('.tm-compare-list-wrapper').querySelector('.tm-compare-list');
+                    if (compareList) {
+                        compareList.classList.toggle('active');
+                    }
+                });
+
+            });
+        }
+    }
+
+    /**
+     * On page load, check for active list share token in cookies 
+     * and set the corresponding list as active, also scroll to it
+     */
+    setActiveListOnInit() {
+
+        // Get share token from cookie
+        const cookieMatch = document.cookie.match(/(?:^|; )tm_wishlist_share_token=([^;]*)/);
+        const shareToken = cookieMatch ? cookieMatch[1] : null;
+
+        if (shareToken) {
+
+            // If share token exists, find the corresponding compare list wrapper and activate it
+            const wrapper = document.querySelector(`.tm-compare-list-wrapper[data-share-token="${shareToken}"]`);
+
+            if (wrapper) {
+
+                // Add active class to wrapper
+                wrapper.classList.add('active');
+
+                // Extract toggle button and active icon within the wrapper
+                const toggleBtn = wrapper.querySelector('.list-toggle');
+                const activeIcon = wrapper.querySelector('.list-active');
+
+                // Set toggle to active state if exists
+                if (toggleBtn) {
+
+                    toggleBtn.classList.add('active');
+
+                    // Set active icon to selected state if exists
+                    if (activeIcon) {
+                        activeIcon.classList.add('selected');
+                    }
+
+                    // Scroll to the active list
+                    wrapper.scrollIntoView({ behavior: 'smooth' });
+
+                }
+            }
+        }
+    }
+
+    /**
+     * Bind click events to list active icons to set the active list and store it in a cookie for persistence
+     */
+    updateActiveList() {
+
+        // Add click listener to each list active icon
+        const activeIcons = document.querySelectorAll('.list-active');
+        
+        // If icons exist, bind click event to update active list and set cookie
+        if(activeIcons.length > 0) {
+
+            // On icon click, set the corresponding list as active and store its share token in a cookie
+            activeIcons.forEach((icon) => {
+
+                icon.addEventListener('click', () => {
+
+                    // Get the share token of the clicked list
+                    const wrapper = icon.closest('.tm-compare-list-wrapper');
+                    const shareToken = wrapper ? wrapper.dataset.shareToken : null;
+
+                    if (shareToken) {
+                        // Set cookie with share token to remember active list
+                        document.cookie = `tm_wishlist_share_token=${shareToken}; path=/; max-age=31536000`; // Expires in 1 year
+
+                        // Remove active class from all icons and toggle buttons
+                        document.querySelectorAll('.list-active').forEach(el => el.classList.remove('selected'));
+                        document.querySelectorAll('.list-toggle').forEach(el => el.classList.remove('active'));
+
+                        // Add active class to clicked icon and its toggle button       
+                        icon.classList.add('selected');
+                        const toggleBtn = icon.closest('.tm-compare-list-wrapper').querySelector('.list-toggle');
+                        if (toggleBtn) {
+                            toggleBtn.classList.add('active');
+                        }
+
+                        // Extract new list title from DOM
+                        const newTitle = wrapper.querySelector('.tm-compare-list-name').textContent;
+
+                        // Update active list title
+                        this.updateActiveListTitle(newTitle);
+
+                    }
+
+                });
+
+            });
+        }
+
+    }
+
+    /**
+     * Update the active list title in the header
+     * @param {string} newTitle - The new title to set as active list title
+     */
+    updateActiveListTitle(newTitle) {
+
+        // Update active wishlist title in header
+        const activeTitle = document.querySelector('.active-list-span');
+
+        if (activeTitle) {
+            activeTitle.textContent = newTitle;
+        }
+
     }
 
 }

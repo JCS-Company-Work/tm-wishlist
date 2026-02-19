@@ -141,7 +141,7 @@
                     $list_name = $list['list_name'];
                     echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">';
                     echo $this->openCloseActive();
-                    echo '<h3>' . esc_html($list_name) . '</h3>';
+                    echo '<h3 class="tm-compare-list-name">' . esc_html($list_name) . '</h3>';
                     echo '<div class="tm-compare-list">';
 
                         foreach ($products as $item) {
@@ -232,8 +232,12 @@
                 echo '<p>This is a view only wishlist. To create your own wishlist, please add products from the product pages.</p>';
             }
 
-            // Render active list controls with active list name
-            echo $this->activeWishlistControls('single-list', $row['list_name']);
+            // Render active list controls with active list name is user is list owner
+            if($isOwner) {
+                
+                echo $this->activeWishlistControls('single-list', $row['list_name']);
+
+            }
 
             echo '<div class="tm-wishlist-lists">';
 
@@ -296,7 +300,7 @@
         }
 
         /**
-         * Test the active wishlist controls HTML output with different active list names
+         * Output active wishlist controls with dynamic buttons based on whether it's single list or multi list view
          *
          * @param string $type
          * @param string $active_list_name
@@ -406,7 +410,7 @@
 
             // This function returns HTML for the open/close toggle and active indicator for compare lists
             return '<div class="list-controls"><span class="list-active">&#10003;</span><span class="list-toggle"></span></div>';
-            
+
         }
 
         /**
