@@ -142,6 +142,16 @@
                     echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">';
                     echo $this->openCloseActive();
                     echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($list_name) . '</h3><button type="button" class="edit-list-name" aria-label="Edit list name">edit</button></div>';
+
+                    // If no items in this list, show message, close wrapper, and skip to next list
+                    if (empty($products) || !is_array($products)) {
+                        echo '<div class="tm-compare-list">';
+                        echo '<p>Your wishlist is empty. To start, view our products pages.</p>';
+                        echo '</div>'; // Close .tm-compare-list
+                        echo '</div>'; // Close .tm-compare-list-wrapper
+                        continue;
+                    }
+
                     echo '<div class="tm-compare-list">';
 
                         foreach ($products as $item) {

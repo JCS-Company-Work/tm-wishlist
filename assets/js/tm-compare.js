@@ -605,15 +605,18 @@ class TMCompare {
             if (response.ok && data && data.success) {
                 this.restoreHeader(header, newName);
             } else {
-                input.classList.add('error');
-                let msg = 'Name already exists. Please choose another.';
+                
+                // Define a generic error message
+                let msg = 'Error updating list name. Please try again.';
+
+                // If the response contains a specific error message, use it instead of the generic one
                 if (data && data.message) {
-                    msg = data.message;
+                    msg = data.message; // Use specific error message from response if available
                 }
 
                 // Display error message to user
                 this.displayError(input, msg);
-
+                
             }
             console.log(data);
         })
