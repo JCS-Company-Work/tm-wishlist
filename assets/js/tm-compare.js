@@ -8,18 +8,29 @@ class TMCompare {
 
     init() {
 
+        // Initialize share button listeners
         this.addControlBtnListeners();
 
+        // Initialize create list button listener
         this.createList();
 
+        // Initialize list toggle listeners
         this.toggleList();
 
+        // Set active list on page load
         this.setActiveListOnInit();
 
+        // Show or hide lists based on active state on page load
+        this.showHideLists();
+
+        // Update active list on icon click
         this.updateActiveList();
 
     }
 
+    /**
+     * Bind click events to control buttons (share, clear, delete) and trigger appropriate API calls based on button ID
+     */
     addControlBtnListeners() {
 
         // Select all control buttons from DOM
@@ -67,6 +78,12 @@ class TMCompare {
 
     }
 
+    /**
+     * Trigger an API action for the wishlist.
+     * @param {string} url - The API endpoint URL.
+     * @param {string} method - The HTTP method (e.g., 'DELETE').
+     * @param {string} shareToken - The share token for the wishlist.
+     */
     triggerAction(url, method, shareToken) {
 
         fetch(`/${url}`, {
@@ -160,11 +177,15 @@ class TMCompare {
                 }
 
             }
-            
+
         }
 
     }
 
+    /**
+     * Bind click event to "Create New List" button to trigger API call for creating a new
+     * wishlist and update the compare page with the new list without requiring a page refresh
+     */
     createList() {
 
         // Add click listener to "Create New List" button
@@ -205,13 +226,18 @@ class TMCompare {
         }
     }
 
+    /**
+     * Toggle the visibility of compare lists
+     */
     toggleList() {
 
         // Add click listener to list toggle buttons
         const toggleButtons = document.querySelectorAll('.list-toggle');
-        
-        if(toggleButtons.length > 0) {
 
+        // Check if toggle buttons exist in DOM
+        if (toggleButtons.length > 0) {
+
+            // Loop through toggle buttons and add click listener
             toggleButtons.forEach((btn) => {
 
                 btn.addEventListener('click', () => {
@@ -219,15 +245,45 @@ class TMCompare {
                     // Toggle active class on button
                     btn.classList.toggle('active');
 
-                    // Toggle visibility of the compare list
-                    const compareList = btn.closest('.tm-compare-list-wrapper').querySelector('.tm-compare-list');
+                    // Toggle open/close state for the wrapper and list
+                    const wrapper = btn.closest('.tm-compare-list-wrapper');
+
+                    // Toggle open class on the compare list within the wrapper
+                    const compareList = wrapper.querySelector('.tm-compare-list');
+
+                    // Toggle open class to show/hide the list
                     if (compareList) {
-                        compareList.classList.toggle('active');
+                        compareList.classList.toggle('open');
                     }
+
                 });
 
             });
+
         }
+
+    }
+
+    /**
+     * Hide all lists that do not contain .active class on initial page load.
+     */
+    showHideLists() {
+        
+        // On load, hide all lists except those with .active
+        document.querySelectorAll('.tm-compare-list-wrapper').forEach(wrapper => {
+
+            // If wrapper does not have active class, ensure its list is closed
+            const compareList = wrapper.querySelector('.tm-compare-list');
+
+            // If compare list exists, toggle open class based on whether wrapper is active
+            if (compareList) {
+                if (!wrapper.classList.contains('active')) {
+                    compareList.classList.remove('open');
+                } else {
+                    compareList.classList.add('open');
+                }
+            }
+        });
     }
 
     /**
@@ -264,6 +320,12 @@ class TMCompare {
                         activeIcon.classList.add('selected');
                     }
 
+                    // Ensure the list is open
+                    const compareList = wrapper.querySelector('.tm-compare-list');
+                    if (compareList) {
+                        compareList.classList.add('open');
+                    }
+
                     // Scroll to the active list
                     wrapper.scrollIntoView({ behavior: 'smooth' });
 
@@ -298,14 +360,18 @@ class TMCompare {
 
                         // Remove active class from all icons and toggle buttons
                         document.querySelectorAll('.list-active').forEach(el => el.classList.remove('selected'));
-                        document.querySelectorAll('.list-toggle').forEach(el => el.classList.remove('active'));
+                        //document.querySelectorAll('.list-toggle').forEach(el => el.classList.remove('active'));
+                        document.querySelectorAll('.tm-compare-list-wrapper').forEach(el => el.classList.remove('active'));
+                        
+                        // Add active class to the clicked icon's wrapper and toggle button
+                        wrapper.classList.add('active');
 
                         // Add active class to clicked icon and its toggle button       
                         icon.classList.add('selected');
-                        const toggleBtn = icon.closest('.tm-compare-list-wrapper').querySelector('.list-toggle');
-                        if (toggleBtn) {
-                            toggleBtn.classList.add('active');
-                        }
+                        // const toggleBtn = icon.closest('.tm-compare-list-wrapper').querySelector('.list-toggle');
+                        // if (toggleBtn) {
+                        //     toggleBtn.classList.add('active');
+                        // }
 
                         // Extract new list title from DOM
                         const newTitle = wrapper.querySelector('.tm-compare-list-name').textContent;
