@@ -12,8 +12,8 @@ const getSavedConfigs = () => {
     // Get user token from cookie
     const userToken = getCookie('tm_wishlist_user_token');
 
-    // Get share token from cookie (for potential use in share page)
-    const shareToken = getCookie('tm_wishlist_share_token');
+    // Get share token from local storage (for potential use in share page)
+    const shareToken = localStorage.getItem('tm_wishlist_share_token');
 
     // Get all wishlist configs from local storage
     const data = JSON.parse(localStorage.getItem('tm_wishlist_configs') || '{}');

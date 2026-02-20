@@ -1,16 +1,27 @@
 class TMCompare {
 
-    constructor() {
+    constructor(options = {}) {
+
+        // Define constants and properties
+        this.STORAGE_KEY = 'tm_wishlist_configs';
+        this.SYNC_URL = options.syncUrl || null;
+        this.SYNC_GET_URL = options.syncGetUrl || null;
+        this.USER_TOKEN_URL = options.userTokenUrl || null;
+        this.nonce = options.nonce || null;
 
         // Initialize properties
         this.init();
-        
+        this.shareToken = localStorage.getItem('tm_wishlist_share_token') || null;
+
     }
 
     init() {
 
         // Initialize share button listeners
         this.addControlBtnListeners();
+
+        // Initialize remove button listeners
+        this.addRemoveBtnListeners();
 
         // Initialize create list button listener
         this.createList();
@@ -31,6 +42,8 @@ class TMCompare {
         this.updateListName();
 
     }
+
+    /** ================= Event Binding / Setup ================= **/
 
     /**
      * Bind click events to control buttons (share, clear, delete) and trigger appropriate API calls based on button ID
@@ -80,6 +93,397 @@ class TMCompare {
             });
         }
 
+    }
+
+    /**
+     * Add event listeners to remove buttons and clear all button
+     */
+    addRemoveBtnListeners() {
+
+        // Select all remove buttons from DOM
+        const removeBtns = document.querySelectorAll('.remove-from-compare');
+
+        if(removeBtns.length > 0) {
+        
+            // Bind click event to each remove button
+            removeBtns.forEach((btn) => {
+
+                // Add click listener
+                btn.addEventListener('click', (e) => {
+
+                    // Prevent default link behavior
+                    e.preventDefault();
+
+                    // Call removeItem method
+                    this.removeItem(e.currentTarget);
+
+                });
+
+            });
+
+        }
+
+        // Select the clear all button from DOM
+        const clearBtn = document.querySelector('.clear-compare');
+        
+        if (clearBtn) {
+            // Bind click event to clear button
+            clearBtn.addEventListener('click', (e) => {
+
+                // Prevent default button behavior
+                e.preventDefault();
+
+                // Call clearAll method
+                this.clearAll();
+
+            });
+        }
+    }
+
+    /**
+     * Bind click event to "Create New List" button to trigger API call for creating a new
+     * wishlist and update the compare page with the new list without requiring a page refresh
+     */
+    createList() {
+
+        // Add click listener to "Create New List" button
+        const createListBtn = document.getElementById('create_list');
+        
+        // If button exists, bind click event to redirect to new list creation page
+        if (createListBtn) {
+
+            createListBtn.addEventListener('click', () => {
+
+                // Get user token from cookie               
+                const userTokenMatch = document.cookie.match(/(?:^|; )tm_wishlist_user_token=([^;]*)/);
+                const userToken = userTokenMatch ? userTokenMatch[1] : null;
+                
+                // Redirect to new list creation page with user token as query parameter
+                fetch('/wp-json/tm-wishlist/v1/lists/new', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_token : userToken 
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+
+                    // If we are on the share page, redirect to the main wishlist page to show the new list
+                    if (window.location.pathname.startsWith('/wishlist/share/')) {
+                        window.location.href = '/wishlist';
+                    } else {
+                        // Else just add the new list to the compare page
+                        console.log('Action response:', data);
+    
+                        // Add new list to the compare page
+                        const lists = document.querySelector('.tm-wishlist-lists');
+                        const newListHTML = data.list_html;
+                        if (lists && newListHTML) {
+                            lists.insertAdjacentHTML('afterbegin', newListHTML);
+                        }
+                    }
+                });
+
+            });
+        }
+    }
+
+    /**
+     * Toggle the visibility of compare lists
+     */
+    toggleList() {
+
+        // Add click listener to list toggle buttons
+        const toggleButtons = document.querySelectorAll('.list-toggle');
+
+        // Check if toggle buttons exist in DOM
+        if (toggleButtons.length > 0) {
+
+            // Loop through toggle buttons and add click listener
+            toggleButtons.forEach((btn) => {
+
+                btn.addEventListener('click', () => {
+
+                    // Toggle active class on button
+                    btn.classList.toggle('active');
+
+                    // Toggle open/close state for the wrapper and list
+                    const wrapper = btn.closest('.tm-compare-list-wrapper');
+
+                    // Toggle open class on the compare list within the wrapper
+                    const compareList = wrapper.querySelector('.tm-compare-list-multi');
+
+                    // Toggle open class to show/hide the list
+                    if (compareList) {
+                        compareList.classList.toggle('open');
+                    }
+
+                });
+
+            });
+
+        }
+
+    }
+
+    /**
+     * On page load, check for active list share token in cookies 
+     * and set the corresponding list as active, also scroll to it
+     */
+    setActiveListOnInit() {
+
+        // Get share token from cookie
+        const cookieMatch = document.cookie.match(/(?:^|; )tm_wishlist_share_token=([^;]*)/);
+        const shareToken = cookieMatch ? cookieMatch[1] : null;
+
+        if (shareToken) {
+
+            // If share token exists, find the corresponding compare list wrapper and activate it
+            const wrapper = document.querySelector(`.tm-compare-list-wrapper[data-share-token="${shareToken}"]`);
+
+            if (wrapper) {
+
+                // Add active class to wrapper
+                wrapper.classList.add('active');
+
+                // Extract toggle button and active icon within the wrapper
+                const toggleBtn = wrapper.querySelector('.list-toggle');
+                const activeIcon = wrapper.querySelector('.list-active');
+
+                // Set toggle to active state if exists
+                if (toggleBtn) {
+
+                    toggleBtn.classList.add('active');
+
+                    // Set active icon to selected state if exists
+                    if (activeIcon) {
+                        activeIcon.classList.add('selected');
+                    }
+
+                    // Ensure the list is open
+                    const compareList = wrapper.querySelector('.tm-compare-list');
+                    if (compareList) {
+                        compareList.classList.add('open');
+                    }
+
+                    // Scroll to the active list
+                    wrapper.scrollIntoView({ behavior: 'smooth' });
+
+                }
+            }
+        }
+    }
+
+    /**
+     * Hide all lists that do not contain .active class on initial page load.
+     */
+    showHideLists() {
+        
+        // On load, hide all lists except those with .active
+        document.querySelectorAll('.tm-compare-list-wrapper').forEach(wrapper => {
+
+            // If wrapper does not have active class, ensure its list is closed
+            const compareList = wrapper.querySelector('.tm-compare-list');
+
+            // If compare list exists, toggle open class based on whether wrapper is active
+            if (compareList) {
+                if (!wrapper.classList.contains('active')) {
+                    compareList.classList.remove('open');
+                } else {
+                    compareList.classList.add('open');
+                }
+            }
+        });
+    }
+
+    /**
+     * Bind click events to list active icons to set the active list and store it in a cookie for persistence
+     */
+    updateActiveList() {
+
+        // Add click listener to each list active icon
+        const activeIcons = document.querySelectorAll('.list-active');
+        
+        // If icons exist, bind click event to update active list and set cookie
+        if(activeIcons.length > 0) {
+
+            // On icon click, set the corresponding list as active and store its share token in a cookie
+            activeIcons.forEach((icon) => {
+
+                icon.addEventListener('click', () => {
+
+                    // Get the share token of the clicked list
+                    const wrapper = icon.closest('.tm-compare-list-wrapper');
+                    const shareToken = wrapper ? wrapper.dataset.shareToken : null;
+
+                    if (shareToken) {
+
+                        // Set share token in lcalStorage for potential use in share page
+                        localStorage.setItem('tm_wishlist_share_token', shareToken);
+
+                        // Remove active class from all icons and toggle buttons
+                        document.querySelectorAll('.list-active').forEach(el => el.classList.remove('selected'));
+                        //document.querySelectorAll('.list-toggle').forEach(el => el.classList.remove('active'));
+                        document.querySelectorAll('.tm-compare-list-wrapper').forEach(el => el.classList.remove('active'));
+                        
+                        // Add active class to the clicked icon's wrapper and toggle button
+                        wrapper.classList.add('active');
+
+                        // Add active class to clicked icon and its toggle button       
+                        icon.classList.add('selected');
+                        // const toggleBtn = icon.closest('.tm-compare-list-wrapper').querySelector('.list-toggle');
+                        // if (toggleBtn) {
+                        //     toggleBtn.classList.add('active');
+                        // }
+
+                        // Extract new list title from DOM
+                        const newTitle = wrapper.querySelector('.tm-compare-list-name').textContent;
+
+                        // Update active list title
+                        this.updateActiveListTitle(newTitle);
+
+                    }
+
+                });
+
+            });
+        }
+
+    }
+
+    /** ================= Core Actions ================= **/
+
+    /**
+     * Remove single item from compare list
+     * @param {HTMLElement} btn - The button that was clicked
+     */
+    removeItem(btn) {
+        // Find the wrapper to get the correct share token (active list)
+        const wrapper = btn.closest('.tm-compare-list-wrapper');
+        const shareToken = wrapper ? wrapper.dataset.shareToken : null;
+
+        // Get user token from cookie
+        const userTokenMatch = document.cookie.match(/(?:^|; )tm_wishlist_user_token=([^;]*)/);
+        const userToken = userTokenMatch ? userTokenMatch[1] : null;
+
+        // Get all user lists from localStorage
+        let allUserLists = {};
+        try {
+            allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+        } catch {
+            allUserLists = {};
+        }
+
+        // Get configs for this user and list
+        let configs = (allUserLists[userToken] && allUserLists[userToken][shareToken]) ? allUserLists[userToken][shareToken] : [];
+
+        // Get layers IDs from data attribute
+        const idsArr = btn.getAttribute('data-layers-ids').split(',') || [];
+
+        // Remove matching config (match all layerIds)
+        configs = configs.filter(item => {
+            if (!Array.isArray(item.layerIds)) return true;
+            // Only remove if every id in item.layerIds is in idsArr and lengths match
+            const itemIds = item.layerIds.map(String).filter(Boolean);
+            const idsArrFiltered = idsArr.filter(Boolean);
+            return !(itemIds.length === idsArrFiltered.length && itemIds.every(id => idsArrFiltered.includes(id)));
+        });
+
+        // Update the structure and save
+        if (!allUserLists[userToken]) allUserLists[userToken] = {};
+        allUserLists[userToken][shareToken] = configs;
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
+
+        // Optionally sync to server
+        if (this.SYNC_URL) {
+            this.syncToServer(configs);
+        }
+
+        document.dispatchEvent(new Event('tmWishlistUpdated'));
+
+        // Remove the closest .tm-compare-item ancestor from DOM
+        const itemEl = btn.closest('.tm-compare-item');
+        if (itemEl) itemEl.remove();
+
+        // After removal, check if the list is now empty
+        if (wrapper) {
+            const listContainer = wrapper.querySelector('.tm-compare-list');
+            // If no more items remain, show empty message and hide control buttons
+            if (listContainer && listContainer.querySelectorAll('.tm-compare-item').length === 0) {
+                // Hide control buttons if present
+                const controls = wrapper.querySelector('.list-control-buttons');
+                if (controls) controls.style.display = 'none';
+                // Show empty message
+                listContainer.innerHTML = '<p>Your wishlist is empty. You can add products to your wishlist from the product pages.</p>';
+            }
+        }
+    }
+
+    /**
+     * Clear all items from compare list
+     */
+    clearAll() {
+
+        // Save empty list
+        this.saveItems([]);
+
+        // Dispatch event to notify other components
+        document.dispatchEvent(new Event('tmWishlistUpdated'));
+
+        // Remove all items from container
+        document.querySelectorAll('.tm-compare-item').forEach(el => el.remove());
+
+        // Select container element
+        const container = document.querySelector('.tm-compare-list');
+
+        // Show empty message
+        if (container) {
+            container.innerHTML = '<p>Wishlist empty, visit product pages to add items.</p>';
+        }
+
+    }
+
+     async saveItems(configs) {
+
+        // Get user token from cookie               
+        const userTokenMatch = document.cookie.match(/(?:^|; )tm_wishlist_user_token=([^;]*)/);
+        const userToken = userTokenMatch ? userTokenMatch[1] : null;
+
+        // Get all user lists from localStorage or initialize
+        let allUserLists = {};
+
+        // Process data
+        try {
+
+        // Attempt to parse existing localStorage data
+        allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+
+        } catch {
+
+        // If parsing fails, log a warning and reset to an empty object to allow saving new data
+        allUserLists = {};
+        console.warn('Failed to parse wishlist data from localStorage. Resetting to empty object.');
+
+        }
+
+        // Ensure user token structure
+        if (!allUserLists[userToken]) {
+        allUserLists[userToken] = {};
+        }
+
+        // Update only the active list for this user
+        allUserLists[userToken][this.shareToken] = configs;
+
+        // Save back to localStorage
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
+
+        // Sync to server if configured
+        if (this.SYNC_URL) {
+            this.syncToServer(configs);
+        }
     }
 
     /**
@@ -186,234 +590,8 @@ class TMCompare {
 
     }
 
-    /**
-     * Bind click event to "Create New List" button to trigger API call for creating a new
-     * wishlist and update the compare page with the new list without requiring a page refresh
-     */
-    createList() {
-
-        // Add click listener to "Create New List" button
-        const createListBtn = document.getElementById('create_list');
-        
-        // If button exists, bind click event to redirect to new list creation page
-        if (createListBtn) {
-
-            createListBtn.addEventListener('click', () => {
-
-                // Get user token from cookie               
-                const userTokenMatch = document.cookie.match(/(?:^|; )tm_wishlist_user_token=([^;]*)/);
-                const userToken = userTokenMatch ? userTokenMatch[1] : null;
-                
-                // Redirect to new list creation page with user token as query parameter
-                fetch('/wp-json/tm-wishlist/v1/lists/new', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        user_token : userToken 
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-
-                    // If we are on the share page, redirect to the main wishlist page to show the new list
-                    if (window.location.pathname.startsWith('/wishlist/share/')) {
-                        window.location.href = '/wishlist';
-                    } else {
-                        // Else just add the new list to the compare page
-                        console.log('Action response:', data);
+    /** ================= Inline Editing Methods ================= **/
     
-                        // Add new list to the compare page
-                        const lists = document.querySelector('.tm-wishlist-lists');
-                        const newListHTML = data.list_html;
-                        if (lists && newListHTML) {
-                            lists.insertAdjacentHTML('afterbegin', newListHTML);
-                        }
-                    }
-                });
-
-            });
-        }
-    }
-
-    /**
-     * Toggle the visibility of compare lists
-     */
-    toggleList() {
-
-        // Add click listener to list toggle buttons
-        const toggleButtons = document.querySelectorAll('.list-toggle');
-
-        // Check if toggle buttons exist in DOM
-        if (toggleButtons.length > 0) {
-
-            // Loop through toggle buttons and add click listener
-            toggleButtons.forEach((btn) => {
-
-                btn.addEventListener('click', () => {
-
-                    // Toggle active class on button
-                    btn.classList.toggle('active');
-
-                    // Toggle open/close state for the wrapper and list
-                    const wrapper = btn.closest('.tm-compare-list-wrapper');
-
-                    // Toggle open class on the compare list within the wrapper
-                    const compareList = wrapper.querySelector('.tm-compare-list-multi');
-
-                    // Toggle open class to show/hide the list
-                    if (compareList) {
-                        compareList.classList.toggle('open');
-                    }
-
-                });
-
-            });
-
-        }
-
-    }
-
-    /**
-     * Hide all lists that do not contain .active class on initial page load.
-     */
-    showHideLists() {
-        
-        // On load, hide all lists except those with .active
-        document.querySelectorAll('.tm-compare-list-wrapper').forEach(wrapper => {
-
-            // If wrapper does not have active class, ensure its list is closed
-            const compareList = wrapper.querySelector('.tm-compare-list');
-
-            // If compare list exists, toggle open class based on whether wrapper is active
-            if (compareList) {
-                if (!wrapper.classList.contains('active')) {
-                    compareList.classList.remove('open');
-                } else {
-                    compareList.classList.add('open');
-                }
-            }
-        });
-    }
-
-    /**
-     * On page load, check for active list share token in cookies 
-     * and set the corresponding list as active, also scroll to it
-     */
-    setActiveListOnInit() {
-
-        // Get share token from cookie
-        const cookieMatch = document.cookie.match(/(?:^|; )tm_wishlist_share_token=([^;]*)/);
-        const shareToken = cookieMatch ? cookieMatch[1] : null;
-
-        if (shareToken) {
-
-            // If share token exists, find the corresponding compare list wrapper and activate it
-            const wrapper = document.querySelector(`.tm-compare-list-wrapper[data-share-token="${shareToken}"]`);
-
-            if (wrapper) {
-
-                // Add active class to wrapper
-                wrapper.classList.add('active');
-
-                // Extract toggle button and active icon within the wrapper
-                const toggleBtn = wrapper.querySelector('.list-toggle');
-                const activeIcon = wrapper.querySelector('.list-active');
-
-                // Set toggle to active state if exists
-                if (toggleBtn) {
-
-                    toggleBtn.classList.add('active');
-
-                    // Set active icon to selected state if exists
-                    if (activeIcon) {
-                        activeIcon.classList.add('selected');
-                    }
-
-                    // Ensure the list is open
-                    const compareList = wrapper.querySelector('.tm-compare-list');
-                    if (compareList) {
-                        compareList.classList.add('open');
-                    }
-
-                    // Scroll to the active list
-                    wrapper.scrollIntoView({ behavior: 'smooth' });
-
-                }
-            }
-        }
-    }
-
-    /**
-     * Bind click events to list active icons to set the active list and store it in a cookie for persistence
-     */
-    updateActiveList() {
-
-        // Add click listener to each list active icon
-        const activeIcons = document.querySelectorAll('.list-active');
-        
-        // If icons exist, bind click event to update active list and set cookie
-        if(activeIcons.length > 0) {
-
-            // On icon click, set the corresponding list as active and store its share token in a cookie
-            activeIcons.forEach((icon) => {
-
-                icon.addEventListener('click', () => {
-
-                    // Get the share token of the clicked list
-                    const wrapper = icon.closest('.tm-compare-list-wrapper');
-                    const shareToken = wrapper ? wrapper.dataset.shareToken : null;
-
-                    if (shareToken) {
-                        // Set cookie with share token to remember active list
-                        document.cookie = `tm_wishlist_share_token=${shareToken}; path=/; max-age=31536000`; // Expires in 1 year
-
-                        // Remove active class from all icons and toggle buttons
-                        document.querySelectorAll('.list-active').forEach(el => el.classList.remove('selected'));
-                        //document.querySelectorAll('.list-toggle').forEach(el => el.classList.remove('active'));
-                        document.querySelectorAll('.tm-compare-list-wrapper').forEach(el => el.classList.remove('active'));
-                        
-                        // Add active class to the clicked icon's wrapper and toggle button
-                        wrapper.classList.add('active');
-
-                        // Add active class to clicked icon and its toggle button       
-                        icon.classList.add('selected');
-                        // const toggleBtn = icon.closest('.tm-compare-list-wrapper').querySelector('.list-toggle');
-                        // if (toggleBtn) {
-                        //     toggleBtn.classList.add('active');
-                        // }
-
-                        // Extract new list title from DOM
-                        const newTitle = wrapper.querySelector('.tm-compare-list-name').textContent;
-
-                        // Update active list title
-                        this.updateActiveListTitle(newTitle);
-
-                    }
-
-                });
-
-            });
-        }
-
-    }
-
-    /**
-     * Update the active list title in the header
-     * @param {string} newTitle - The new title to set as active list title
-     */
-    updateActiveListTitle(newTitle) {
-
-        // Update active wishlist title in header
-        const activeTitle = document.querySelector('.active-list-span');
-
-        if (activeTitle) {
-            activeTitle.textContent = newTitle;
-        }
-
-    }
-
     /**
      * Bind click events to edit list name buttons to allow inline editing of the list name,
      */
@@ -666,9 +844,124 @@ class TMCompare {
 
     }
 
+    /** ================= Utility / Helper Methods ================= **/
+
+    /**
+     * Update the active list title in the header
+     * @param {string} newTitle - The new title to set as active list title
+     */
+    updateActiveListTitle(newTitle) {
+
+        // Update active wishlist title in header
+        const activeTitle = document.querySelector('.active-list-span');
+
+        if (activeTitle) {
+            activeTitle.textContent = newTitle;
+        }
+
+    }
+
+    /**
+     * Sync the current wishlist to the server via REST API.
+     * - Uses `this.SYNC_URL` for guests
+     * - Payload includes `data` (array of configs) and optionally `generate_share` (boolean)
+     * - On success, updates share token and share link in the UI if returned by the server
+     * - Prevents parallel syncs with `this.isSyncing` flag
+        * @param {TMCompareItem[]} configs
+    */
+    async syncToServer(configs) {
+
+        // Prevent parallel syncs
+        if (this.isSyncing) return;
+        this.isSyncing = true;
+
+        // Ensure user token exists
+        const userToken = getCookie('tm_wishlist_user_token');
+        if (!userToken) {
+        this.isSyncing = false;
+        return;
+        }
+
+        // Ensure save URL is configured
+        const saveUrl = this.SYNC_URL;
+
+        // Exit if no save URL
+        if (!saveUrl) {
+        this.isSyncing = false;
+        return;
+        }
+
+        // Only request share token if not already present for this session
+        const shareToken = getCookie('tm_wishlist_share_token');
+        const shouldGenerateShare = !shareToken;
+
+        // Prepare payload
+        const payload = {
+        data: configs,
+        share_token: shareToken,
+        user_token: userToken,
+        ...(shouldGenerateShare ? { generate_share: true } : {})
+        };
+
+        try {
+
+        const res = await fetch(saveUrl, {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        if (data?.success) {
+
+            // Store share token if present
+            if (data.share_token) {
+
+            // Get previous values
+            const prevShareToken = getCookie('tm_wishlist_share_token');
+
+            // Only update if token has changed to avoid unnecessary UI updates
+            if (data.share_token !== prevShareToken) {
+
+                // Persist new share token
+                localStorage.setItem('tm_wishlist_share_token', data.share_token);
+
+                //Update DOM wishlist links
+                updateWishlistLinks();
+
+            }
+
+            }
+
+            // Update share link if returned
+            // if (data.share_url) {
+            //   this.updateShareLink(data.share_url);
+            // }
+        }
+
+        } catch (err) {
+
+        console.error('Error syncing wishlist to server:', err);
+
+        } finally {
+
+        this.isSyncing = false;
+
+        }
+    }
 }
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-    new TMCompare();
+    new TMCompare({
+        syncUrl: window.TMCompareSettings?.rest_save_url || null,
+        syncGetUrl: window.TMCompareSettings?.rest_get_url || null,
+        userTokenUrl: window.TMCompareSettings?.user_token || null,
+        nonce: window.TMCompareSettings?.nonce || null
+    });
 });

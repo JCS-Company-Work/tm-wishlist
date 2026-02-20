@@ -291,13 +291,10 @@
                 'success' => true,
                 'share_token' => $share_token,
                 'user_token' => $incoming_user_token,
+                'share_url' => trailingslashit( home_url( 'wishlist' ) ) . 'share/' . rawurlencode( $share_token ) . '/',
             ];
-            $result['share_url'] = trailingslashit( home_url( 'wishlist' ) ) . 'share/' . rawurlencode( $share_token ) . '/';
-            
-            // Set cookies server-side for maximum persistence (1 year, SameSite=Lax)
-            if (!isset($_COOKIE['tm_wishlist_share_token']) || $_COOKIE['tm_wishlist_share_token'] !== $share_token) {
-                setcookie('tm_wishlist_share_token', $share_token, time() + 31536000, '/', '', false, false);
-            }
+
+            // Set cookie for user token if not already set or if different (expires in 1 year)
             if (!isset($_COOKIE['tm_wishlist_user_token']) || $_COOKIE['tm_wishlist_user_token'] !== $incoming_user_token) {
                 setcookie('tm_wishlist_user_token', $incoming_user_token, time() + 31536000, '/', '', false, false);
             }

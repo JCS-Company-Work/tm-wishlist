@@ -290,6 +290,16 @@
                                 <?php if ( $isOwner ) : ?>
                                     <i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
                                         data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>
+                                    <span 
+                                        class="remove-from-compare" 
+                                        data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
+                                        data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>">
+                                        <!-- SVG Cross Icon -->
+                                        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                                            <line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="13" y1="3" x2="3" y2="13" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                    </span>
                                 <?php endif; ?>
                             </div>
 
