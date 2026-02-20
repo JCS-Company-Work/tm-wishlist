@@ -200,40 +200,49 @@ class TMAddItems {
    * Also dispatches a `tmWishlistUpdated` event on `document`.
    * @param {TMCompareItem[]} configs
    */
-  // saveConfigs(configs) {
-  //   localStorage.setItem(this.STORAGE_KEY, JSON.stringify(configs));
-  //   if (this.SYNC_URL) {
-  //     this.syncToServer(configs);
-  //   }
-  //   document.dispatchEvent(new Event('tmWishlistUpdated'));
-  // }
-
   saveConfigs(configs) {
 
-    // Get the active share token
-    const shareTokenMatch = document.cookie.match(/(?:^|; )tm_wishlist_share_token=([^;]*)/);
-    const shareToken = shareTokenMatch ? shareTokenMatch[1] : null;
-    
-    // No active list
-    if (!shareToken) return; 
+    // Get user token and share token
+    const userToken = getCookie('tm_wishlist_user_token');
+    const shareToken = getCookie('tm_wishlist_share_token');
 
-    // Get all lists from localStorage or initialize
-    let allLists = {};
+    // Return if tokens missing
+    if (!userToken || !shareToken) return;
+
+    // Get all user lists from localStorage or initialize
+    let allUserLists = {};
+
+    // Process data
     try {
-      allLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+
+      // Attempt to parse existing localStorage data
+      allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+
     } catch {
-      allLists = {};
+
+      // If parsing fails, log a warning and reset to an empty object to allow saving new data
+      allUserLists = {};
+      console.warn('Failed to parse wishlist data from localStorage. Resetting to empty object.');
+
     }
 
-    // Update only the active list
-    allLists[shareToken] = configs;
+    // Ensure user token structure
+    if (!allUserLists[userToken]) {
+      allUserLists[userToken] = {};
+    }
+
+    // Update only the active list for this user
+    allUserLists[userToken][shareToken] = configs;
 
     // Save back to localStorage
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allLists));
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
 
+    // Sync to server if configured
     if (this.SYNC_URL) {
       this.syncToServer(configs);
     }
+
+    // Emit update event
     document.dispatchEvent(new Event('tmWishlistUpdated'));
 
   }
@@ -336,7 +345,7 @@ class TMAddItems {
    * If missing, generate a new one (UUID).
    */
   async ensureUserToken() {
-    
+
     let userToken = localStorage.getItem('tm_wishlist_user_token');
     if (!userToken) {
       try {
@@ -361,13 +370,13 @@ class TMAddItems {
    * - Logged-in users: `SYNC_GET_URL_USER`
    */
   async seedFromServer() {
-    
-    // Use share token from localStorage
-    const shareToken = localStorage.getItem('tm_wishlist_share_token');
-    if (!this.SYNC_GET_URL || !shareToken) return;
 
-    // Construct URL
-    const url = `${this.SYNC_GET_URL}/${encodeURIComponent(shareToken)}`;
+    // Use user token from cookie
+    const userToken = getCookie('tm_wishlist_user_token');
+    if (!this.SYNC_GET_URL || !userToken) return;
+
+    // Construct URL for user lists
+    const url = `${this.SYNC_GET_URL}?user_token=${encodeURIComponent(userToken)}`;
 
     try {
         const res = await fetch(url, {
@@ -386,20 +395,51 @@ class TMAddItems {
         }
 
         // Persist returned data if valid
-        if (data && Array.isArray(data.data)) {
-            const existing = getSavedConfigs();
-            if (data.data.length > 0 || existing.length === 0) {
-                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data.data));
-                this.updateWishlistCounter(data.data.length);
-            }
+        if (data && Array.isArray(data.lists)) {
+
+          // Get all user lists from localStorage or initialize empty object
+          let allUserLists = {};
+
+          // Process data
+          try {
+
+            // Attempt to parse localstorage data
+            allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+
+          } catch {
+
+            // If parsing fails, log a warning and reset to an empty object to allow seeding new data
+            allUserLists = {};
+            console.warn('Failed to parse existing wishlist data from localStorage. Resetting to empty state.');
+
+          }
+
+          // Build nested structure: userToken -> shareToken -> configs
+          // Ensure user token structure exists
+          allUserLists[userToken] = {};
+
+          // Iterate over lists returned by server and populate user's lists
+          data.lists.forEach(list => {
+            allUserLists[userToken][list.share_token] = list.data || [];
+          });
+
+          // Save back to localStorage
+          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
+
+          // Update counter with total items in all lists
+          const totalItems = Object.values(allUserLists[userToken]).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+          this.updateWishlistCounter(totalItems);
+
         }
 
         // Update share link if provided
         if (data.share_url) this.updateShareLink(data.share_url);
 
     } catch (err) {
+        // If any error occurs during fetch or processing, log a warning and do not seed data
         console.warn('Could not seed compare list from server', err);
     }
+
   }
 
   /************ DOM Extraction ************/
@@ -564,11 +604,7 @@ class TMAddItems {
           // Compare normalized signatures
           const sigA = this.normalizeLayersSignature(a);
           const sigB = this.normalizeLayersSignature(b);
-  if (sigA !== sigB) {
-    console.log(key);
-    console.log(sigA);
-    console.log(sigB);
-  }
+
           // Compare normalized signatures
           if (sigA !== sigB) return false;
   
@@ -646,11 +682,12 @@ class TMAddItems {
     const productNameEl = document.querySelector('.product-model-title');
     const productName = productNameEl ? productNameEl.textContent.trim() : '';
 
+    // Get current saved configs for user
     const savedConfigs = getSavedConfigs();
 
     // Get current config
     const currentConfig = this.getCurrentProductConfig();
-
+    console.log('currentConfig:', currentConfig);
     // Check for matches (product_id + layerIds signature)
     const match = this.findMatchingConfigIndex(savedConfigs, currentConfig, productId);
 
@@ -671,7 +708,7 @@ class TMAddItems {
       return;
 
     }
-
+    console.log('savedConfigs:', savedConfigs);
     // Add new config
     savedConfigs.push({
       product_id: productId,
@@ -679,7 +716,7 @@ class TMAddItems {
       price,
       ...currentConfig
     });
-
+console.log('Adding config:', savedConfigs);
     // Save updated list
     this.saveConfigs(savedConfigs);
 

@@ -4,14 +4,22 @@
  */
 
 /**
- * Get saved configurations from local storage
+ * Get saved configurations from local storage for the current user
  * @returns {array}
  */
 const getSavedConfigs = () => {
 
-    // Try localStorage first
-    const data = localStorage.getItem('tm_wishlist_configs');
-    return data ? JSON.parse(data) : [];
+    // Get user token from cookie
+    const userToken = getCookie('tm_wishlist_user_token');
+
+    // Get share token from cookie (for potential use in share page)
+    const shareToken = getCookie('tm_wishlist_share_token');
+
+    // Get all wishlist configs from local storage
+    const data = JSON.parse(localStorage.getItem('tm_wishlist_configs') || '{}');
+
+    // Return configs for current user and share token, or empty array if not found
+    return (data[userToken] && data[userToken][shareToken]) ? data[userToken][shareToken] : [];
 
 }
 
@@ -112,12 +120,14 @@ const updateWishlistLinks = () => {
     // Get share token from local storage
     const token = localStorage.getItem('tm_wishlist_share_token');
 
-    // Update all wishlist links
+    // Update all wishlist links except #manage_lists
     if (token) {
-
-        // Update hrefs
-        document.querySelectorAll('a[href=\"/wishlist\"]')
-            .forEach(link => link.href = `/wishlist/share/${token}/`);
+        document.querySelectorAll('a[href="/wishlist"]')
+            .forEach(link => {
+                if (link.id !== 'manage_lists') {
+                    link.href = `/wishlist/share/${token}/`;
+                }
+            });
     }
 }
 

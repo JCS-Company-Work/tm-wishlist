@@ -280,21 +280,21 @@
                 return new \WP_Error( 'db_unavailable', 'Database not available', [ 'status' => 500 ] );
             }
 
-            // Sanitize key parameter
-            $key = sanitize_text_field( $request['key'] );
+            // Sanitize share_token parameter
+            $share_token = sanitize_text_field( $request->get_param('share_token') ?? '' );
 
             // Table name
             $table_name = TMWL_DB::get_table_name();
 
             // Find row by share_token
             $row = $wpdb->get_row(
-                $wpdb->prepare("SELECT * FROM {$table_name} WHERE share_token = %s LIMIT 1", $key)
+                $wpdb->prepare("SELECT * FROM {$table_name} WHERE share_token = %s LIMIT 1", $share_token)
             );
 
             // If no row found, return empty data with share token for potential new entry
             if ( ! $row ) {
                 return rest_ensure_response([
-                    'share_token' => $key,
+                    'share_token' => $share_token,
                     'data'        => [],
                     'edit_allowed' => false,
                 ]);
@@ -304,7 +304,7 @@
             $data = json_decode( $row->data, true );
 
             // Ownership check: edit_allowed if share_token matches
-            $edit_allowed = ($row->share_token === $key);
+            $edit_allowed = ($row->share_token === $share_token);
 
             // Return data with share token and edit permission flag
             return rest_ensure_response([
