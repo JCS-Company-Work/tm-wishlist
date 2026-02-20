@@ -187,6 +187,9 @@
             // Assert that the output contains the expected control button div
             $this->assertStringContainsString('<div class="active-list-controls">', $output, 'List control buttons should return active list control div');
             
+            // Assert that the output does not contain the active list name for single-list view
+            $this->assertStringNotContainsString('<p class="active-list-name">Active Wishlist:', $output, 'List control buttons should return active list control header div');
+
             // Assert that all expected buttons are present in the output
             $this->assertStringContainsString('<button id="create_list"', $output, 'List control buttons should return create list button');
             $this->assertStringContainsString('<a href="/wishlist" id="manage_lists"', $output, 'List control buttons should return manage lists button');
@@ -208,6 +211,9 @@
 
             // Assert that the output contains the expected control button div
             $this->assertStringContainsString('<div class="active-list-controls">', $output, 'List control buttons should return active list control div');
+            
+            // Assert that the output contains the active list name for multi-list view
+            $this->assertStringContainsString('<p class="active-list-name">Active Wishlist:', $output, 'List control buttons should return active list control header div');
             
             // Assert that all expected buttons are present in the output
             $this->assertStringContainsString('<button id="create_list"', $output, 'List control buttons should return create list button');

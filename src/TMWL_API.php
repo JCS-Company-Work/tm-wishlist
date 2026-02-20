@@ -95,37 +95,27 @@
                 return new \WP_Error( 'db_unavailable', 'Database not available', [ 'status' => 500 ] );
             }
 
+            // Get table name
             $table_name = TMWL_DB::get_table_name();
 
             // Get user token from request or cookie
             $user_token = sanitize_text_field($request->get_param('user_token') ?? '');
+
+            // Check if there is data in request, else init empty array
+            $data = $request->get_param('data') ?? [];
+
+            // If no user token in request, check cookie for existing token
             if (empty($user_token) && isset($_COOKIE['tm_wishlist_user_token'])) {
                 $user_token = sanitize_text_field($_COOKIE['tm_wishlist_user_token']);
             }
+
+            // If still no user token, generate a new one (this allows creating a list without a pre-existing token, but will create a new user token for them)
             if (empty($user_token)) {
                 $user_token = 'user-' . substr(str_shuffle('abcdefghijklmnopqrstuvwxyz0123456789'), 0, 8);
             }
 
-
             // Generate a unique list name for this user
-            $base_name = 'My Wishlist';
-            $existing_names = $wpdb->get_col(
-                $wpdb->prepare(
-                    "SELECT list_name FROM {$table_name} WHERE user_token = %s AND list_name LIKE %s",
-                    $user_token,
-                    $base_name . '%'
-                )
-            );
-            $max_num = 0;
-            foreach ($existing_names as $name) {
-                if (preg_match('/^' . preg_quote($base_name, '/') . ' #(\d+)$/', $name, $matches)) {
-                    $num = intval($matches[1]);
-                    if ($num > $max_num) {
-                        $max_num = $num;
-                    }
-                }
-            }
-            $new_list_name = $base_name . ' #' . ($max_num + 1);
+            $new_list_name = $this->unique_table_name($wpdb, $user_token, $table_name);
 
             // Generate new share token
             $share_token = bin2hex(random_bytes(10));
@@ -136,13 +126,22 @@
                 [
                     'user_token' => $user_token,
                     'share_token' => $share_token,
-                    'data' => wp_json_encode([]),
+                    'data' => wp_json_encode($data),
                     'updated_at' => current_time('mysql'),
                     'list_name' => $new_list_name,
                 ],
                 ['%s', '%s', '%s', '%s', '%s']
             );
 
+            // If data is not empty, return only tokens and data for localStorage update
+            if (!empty($data)) {
+                return rest_ensure_response([
+                    'success' => true,
+                    'share_token' => $share_token,
+                    'user_token' => $user_token,
+                    'data' => wp_json_encode($data),
+                ]);
+            }
 
             // Use listControlButtons from TMWL_Compare for unified button markup
             if ( ! class_exists( '\TMWishlist\TMWL_Compare' ) ) {
@@ -163,6 +162,45 @@
                 'user_token' => $user_token,
                 'list_html' => $list_html,
             ]);
+        }
+
+        public function unique_table_name($wpdb, $user_token, $table_name) {
+
+            // Set a default base name for list
+            $base_name = 'My Wishlist';
+
+            // Get existing list names for this user that start with the base name
+            $existing_names = $wpdb->get_col(
+                $wpdb->prepare(
+                    "SELECT list_name FROM {$table_name} WHERE user_token = %s AND list_name LIKE %s",
+                    $user_token,
+                    $base_name . '%'
+                )
+            );
+
+            // Find the highest numbered list and increment for the new name
+            $max_num = 0;
+
+            // Loop through existing names to find the highest number suffix
+            foreach ($existing_names as $name) {
+
+                // Use regex to match names like "My Wishlist #2" and extract the number
+                if (preg_match('/^' . preg_quote($base_name, '/') . ' #(\d+)$/', $name, $matches)) {
+                    $num = intval($matches[1]);
+
+                    // Update max_num if this number is higher
+                    if ($num > $max_num) {
+                        $max_num = $num;
+                    }
+                }
+            }
+
+            // Generate new name with incremented number
+            $new_list_name = $base_name . ' #' . ($max_num + 1);
+
+            // Return new name
+            return $new_list_name;
+
         }
 
         /**
@@ -189,14 +227,18 @@
             $incoming_share_token = sanitize_text_field($params['share_token'] ?? '');
             $incoming_data = is_array($params['data'] ?? null) ? $params['data'] : [];
 
-            // User token logic ---
+            // Get user token from request or cookie, generate if not present
             $incoming_user_token = sanitize_text_field($params['user_token'] ?? '');
             if (empty($incoming_user_token) && isset($_COOKIE['tm_wishlist_user_token'])) {
                 $incoming_user_token = sanitize_text_field($_COOKIE['tm_wishlist_user_token']);
             }
+
+            // If still no user token, generate a new one (this allows saving without a pre-existing token, but will create a new user token for them)
             if (empty($incoming_user_token)) {
+
                 // Generate a new user token
                 $incoming_user_token = 'user-' . substr(str_shuffle('abcdefghijklmnopqrstuvwxyz0123456789'), 0, 8);
+
             }
 
             // If no share token in request, check cookie for existing token

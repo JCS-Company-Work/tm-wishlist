@@ -145,14 +145,14 @@
 
                     // If no items in this list, show message, close wrapper, and skip to next list
                     if (empty($products) || !is_array($products)) {
-                        echo '<div class="tm-compare-list">';
+                        echo '<div class="tm-compare-list tm-compare-list-multi">';
                         echo '<p>Your wishlist is empty. To start, view our products pages.</p>';
                         echo '</div>'; // Close .tm-compare-list
                         echo '</div>'; // Close .tm-compare-list-wrapper
                         continue;
                     }
 
-                    echo '<div class="tm-compare-list">';
+                    echo '<div class="tm-compare-list tm-compare-list-multi">';
 
                         foreach ($products as $item) {
 
@@ -252,6 +252,8 @@
             echo '<div class="tm-wishlist-lists">';
 
                 echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token_param) . '">';
+
+                    echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($row['list_name']) . '</h3><button type="button" class="edit-list-name" aria-label="Edit list name">edit</button></div>';
                     
                     echo '<div class="tm-compare-list">';
 
@@ -316,27 +318,61 @@
          * @param string $active_list_name
          * @return void
          */
+        // public function activeWishlistControls($type, $active_list_name) {
+
+        //     // Build active list name HTML if active list exists
+        //     $active_list_html = !empty($active_list_name)
+        //         ? '<p class="active-list-name">Active Wishlist: </p><span class="active-list-span button">' . esc_html($active_list_name) . '</span>'
+        //         : '';
+
+        //     // Build buttons HTML based on type (single-list or multi-list)    
+        //     $buttons_html = '';
+
+        //     // Final HTML output
+        //     $final_html = '';
+
+        //     // If multi list page we don;t need to show manage lists button as we are already there
+        //     if ($type === 'multi-list') {
+
+        //         $buttons_html .= '<button id="create_list" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Create New List</button>';
+
+        //         // Combine active list name and buttons HTML, if active list exists
+        //         $final_html .=  $active_list_html . $buttons_html;    
+
+        //     } else { 
+        //         // Otherwise show both buttons
+        //         $buttons_html .= '<button id="create_list" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Create New List</button>';
+        //         $buttons_html .= '<a href="/wishlist" id="manage_lists" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Manage Lists</a>';
+                
+        //         // Return button HTML without active list on single share page
+        //         $final_html .=  $buttons_html;
+        //     }
+
+        //     // Return combined HTML
+        //     return '<div class="active-list-controls">' . $final_html . '</div>';
+        // }
+
         public function activeWishlistControls($type, $active_list_name) {
 
-            // Build active list name HTML if active list exists
+            
             $active_list_html = !empty($active_list_name)
                 ? '<p class="active-list-name">Active Wishlist: </p><span class="active-list-span button">' . esc_html($active_list_name) . '</span>'
                 : '';
 
-            // Build buttons HTML based on type (single-list or multi-list)    
-            $buttons_html = '';
+            // Build buttons HTML based on type (single-list or multi-list)
+            $buttons_html = '<button id="create_list" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Create New List</button>';
 
-            // If multi list page we don;t need to show manage lists button as we are already there
-            if ($type === 'multi-list') {
-                $buttons_html .= '<button id="create_list" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Create New List</button>';
-            } else { 
-                // Otherwise show both buttons
-                $buttons_html .= '<button id="create_list" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Create New List</button>';
+            // For single list view, also show manage lists button to navigate back to multi-list view
+            if ($type !== 'multi-list') {
                 $buttons_html .= '<a href="/wishlist" id="manage_lists" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Manage Lists</a>';
             }
 
+            // For multi-list, show active list name; for single-list, omit it
+            $final_html = ($type === 'multi-list' ? $active_list_html : '') . $buttons_html;
+
             // Return combined HTML
-            return '<div class="active-list-controls">' . $active_list_html . $buttons_html . '</div>';
+            return '<div class="active-list-controls">' . $final_html . '</div>';
+            
         }
 
         /**

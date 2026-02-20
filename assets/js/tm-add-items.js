@@ -203,50 +203,128 @@ class TMAddItems {
   saveConfigs(configs) {
 
     // Get user token and share token
-    const userToken = getCookie('tm_wishlist_user_token');
-    const shareToken = getCookie('tm_wishlist_share_token');
+    const userToken = getCookie('tm_wishlist_user_token') ?? this.generateUserToken();
+    const shareToken = getCookie('tm_wishlist_share_token') ?? null;
 
-    // Return if tokens missing
-    if (!userToken || !shareToken) return;
+    // Return if user token is missing
+    if (!userToken) return;
 
-    // Get all user lists from localStorage or initialize
-    let allUserLists = {};
+    if(shareToken) {
 
-    // Process data
-    try {
+      // Get all user lists from localStorage or initialize
+      let allUserLists = {};
+  
+      // Process data
+      try {
+  
+        // Attempt to parse existing localStorage data
+        allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+  
+      } catch {
+  
+        // If parsing fails, log a warning and reset to an empty object to allow saving new data
+        allUserLists = {};
+        console.warn('Failed to parse wishlist data from localStorage. Resetting to empty object.');
+  
+      }
+  
+      // Ensure user token structure
+      if (!allUserLists[userToken]) {
+        allUserLists[userToken] = {};
+      }
+  
+      // Update only the active list for this user
+      allUserLists[userToken][shareToken] = configs;
+  
+      // Save back to localStorage
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
+  
+      // Sync to server if configured
+      if (this.SYNC_URL) {
+        this.syncToServer(configs);
+      }
 
-      // Attempt to parse existing localStorage data
-      allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+    } else {
 
-    } catch {
+      // If no share token, create new list
+      fetch('/wp-json/tm-wishlist/v1/lists/new', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+              user_token : userToken,
+              data: configs 
+          })
+      })
+      .then(response => response.json())
+      .then(data => {
+        
+        console.log('Action response:', data);
 
-      // If parsing fails, log a warning and reset to an empty object to allow saving new data
-      allUserLists = {};
-      console.warn('Failed to parse wishlist data from localStorage. Resetting to empty object.');
+        if (data?.success) {
+          
+          // Set share token cookie
+          document.cookie = `tm_wishlist_share_token=${data.share_token}; path=/; SameSite=Lax; max-age=31536000`;
+
+          // Update share link if returned
+          if (data.share_url) {
+            this.updateShareLink(data.share_url);
+          }
+
+          // Update localStorage with new share token
+          const newShareToken = data.share_token;
+          let allUserLists = {};
+  
+          try {
+            allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+          } catch {
+            allUserLists = {};
+            console.warn('Failed to parse wishlist data from localStorage during share token update. Resetting to empty object.');
+          }
+  
+          if (!allUserLists[userToken]) {
+            allUserLists[userToken] = {};
+          }
+  
+          allUserLists[userToken][newShareToken] = configs;
+
+          // Save back to localStorage
+          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
+        }
+      });
 
     }
 
-    // Ensure user token structure
-    if (!allUserLists[userToken]) {
-      allUserLists[userToken] = {};
-    }
-
-    // Update only the active list for this user
-    allUserLists[userToken][shareToken] = configs;
-
-    // Save back to localStorage
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
-
-    // Sync to server if configured
-    if (this.SYNC_URL) {
-      this.syncToServer(configs);
-    }
 
     // Emit update event
     document.dispatchEvent(new Event('tmWishlistUpdated'));
 
   }
 
+  generateUserToken() {
+
+    fetch(this.USER_TOKEN_URL, {
+      method: 'GET',
+      headers: {  
+        'Content-Type': 'application/json'   
+      },
+      credentials: 'same-origin'
+    }).then(res => res.json())
+    .then(data => {
+      if (data?.user_token) {
+        // Set cookie for server access (expires in 1 year)
+        document.cookie = `tm_wishlist_user_token=${data.user_token}; path=/; SameSite=Lax; max-age=31536000`;
+
+        return data.user_token;
+      }
+
+    }).catch(err => { 
+
+      console.error('Failed to generate user token:', err);
+
+    });
+  }
   /**
    * Sync the current wishlist to the server via REST API.
    * - Uses `this.SYNC_URL` for guests
@@ -262,7 +340,11 @@ class TMAddItems {
     this.isSyncing = true;
 
     // Ensure user token exists
-    const userToken = this.ensureUserToken();
+    const userToken = getCookie('tm_wishlist_user_token');
+    if (!userToken) {
+      this.isSyncing = false;
+      return;
+    }
 
     // Ensure save URL is configured
     const saveUrl = this.SYNC_URL;
@@ -274,13 +356,13 @@ class TMAddItems {
     }
 
     // Only request share token if not already present for this session
-    const prevShareToken = localStorage.getItem('tm_wishlist_share_token');
-    const shouldGenerateShare = !prevShareToken;
+    const shareToken = getCookie('tm_wishlist_share_token');
+    const shouldGenerateShare = !shareToken;
 
     // Prepare payload
     const payload = {
       data: configs,
-      share_token: localStorage.getItem('tm_wishlist_share_token'),
+      share_token: shareToken,
       user_token: userToken,
       ...(shouldGenerateShare ? { generate_share: true } : {})
     };
@@ -305,13 +387,13 @@ class TMAddItems {
         if (data.share_token) {
 
           // Get previous values
-          const prevShareToken = localStorage.getItem('tm_wishlist_share_token');
+          const prevShareToken = getCookie('tm_wishlist_share_token');
 
           // Only update if token has changed to avoid unnecessary UI updates
           if (data.share_token !== prevShareToken) {
 
             // Persist new share token
-            localStorage.setItem('tm_wishlist_share_token', data.share_token);
+            //localStorage.setItem('tm_wishlist_share_token', data.share_token);
 
             // Set cookie for server access (expires in 1 year)
             document.cookie = `tm_wishlist_share_token=${data.share_token}; path=/; SameSite=Lax; max-age=31536000`;
@@ -337,31 +419,6 @@ class TMAddItems {
 
       this.isSyncing = false;
 
-    }
-  }
-
-  /**
-   * Ensure user token exists in localStorage and cookie.
-   * If missing, generate a new one (UUID).
-   */
-  async ensureUserToken() {
-
-    let userToken = localStorage.getItem('tm_wishlist_user_token');
-    if (!userToken) {
-      try {
-        const res = await fetch(this.USER_TOKEN_URL, { credentials: 'same-origin' });
-        if (!res.ok) return null;
-        const data = await res.json();
-        const serverToken = data?.user_token || null;
-        if (!serverToken) return null;
-
-        localStorage.setItem('tm_wishlist_user_token', serverToken);
-        document.cookie = `tm_wishlist_user_token=${serverToken}; path=/; SameSite=Lax; max-age=31536000`;
-        return serverToken;
-      } catch(err) {
-        console.error('Failed to fetch user token:', err);  
-      }
-     
     }
   }
 

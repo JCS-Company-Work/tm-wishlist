@@ -117,9 +117,9 @@ const clearWishlistStorage = () => {
  */
 const updateWishlistLinks = () => {
 
-    // Get share token from local storage
-    const token = localStorage.getItem('tm_wishlist_share_token');
-
+    // Get share token from cookie
+    const token = getCookie('tm_wishlist_share_token');
+    console.log('Updating wishlist links with token:', token);
     // Update all wishlist links except #manage_lists
     if (token) {
         document.querySelectorAll('a[href="/wishlist"]')

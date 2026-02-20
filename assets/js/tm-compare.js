@@ -4,6 +4,7 @@ class TMCompare {
 
         // Initialize properties
         this.init();
+        
     }
 
     init() {
@@ -215,13 +216,20 @@ class TMCompare {
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Action response:', data);
 
-                    // Add new list to the compare page
-                    const lists = document.querySelector('.tm-wishlist-lists');
-                    const newListHTML = data.list_html;
-                    if (lists && newListHTML) {
-                        lists.insertAdjacentHTML('afterbegin', newListHTML);
+                    // If we are on the share page, redirect to the main wishlist page to show the new list
+                    if (window.location.pathname.startsWith('/wishlist/share/')) {
+                        window.location.href = '/wishlist';
+                    } else {
+                        // Else just add the new list to the compare page
+                        console.log('Action response:', data);
+    
+                        // Add new list to the compare page
+                        const lists = document.querySelector('.tm-wishlist-lists');
+                        const newListHTML = data.list_html;
+                        if (lists && newListHTML) {
+                            lists.insertAdjacentHTML('afterbegin', newListHTML);
+                        }
                     }
                 });
 
@@ -252,7 +260,7 @@ class TMCompare {
                     const wrapper = btn.closest('.tm-compare-list-wrapper');
 
                     // Toggle open class on the compare list within the wrapper
-                    const compareList = wrapper.querySelector('.tm-compare-list');
+                    const compareList = wrapper.querySelector('.tm-compare-list-multi');
 
                     // Toggle open class to show/hide the list
                     if (compareList) {
@@ -582,11 +590,14 @@ class TMCompare {
      * @param {string} currentName - The current name of the list
      */
     saveListName(input, wrapper, header, currentName, errorMsg) {
+
         // Get new name from input or fallback to current name if input is empty
         const newName = input.value.trim() || currentName;
         const shareToken = wrapper.dataset.shareToken;
         const userTokenMatch = document.cookie.match(/(?:^|; )tm_wishlist_user_token=([^;]*)/);
         const userToken = userTokenMatch ? userTokenMatch[1] : null;
+
+        // Update list name via API call
         fetch(`/wp-json/tm-wishlist/v1/lists/${shareToken}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
