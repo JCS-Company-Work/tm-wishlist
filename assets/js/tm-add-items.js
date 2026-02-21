@@ -3,7 +3,7 @@
  * Manages the client-side Compare list on product pages:
  * - Reads current product configuration from the DOM
  * - Stores items in localStorage (key configurable)
- * - Syncs list to the backend via WP REST API (guest or user scope)
+ * - Syncs list to the backend via WP REST API
  * - Emits a `tmWishlistUpdated` event on changes
  *
  * Data is persisted under `this.STORAGE_KEY` as an array of items.
@@ -11,26 +11,20 @@
 class TMAddItems {
 
   /**
-   * @typedef {Object} TMAddItemsOptions
-   * @property {string|null} [syncUrl]          REST save URL for guests
-   * @property {string|null} [syncGetUrl]       REST get URL base for guests (append /{key})
-   * @property {string|null} [userTokenUrl]       REST URL to fetch user token (if not included in settings)
-   * @property {string|null} [nonce]            WP REST nonce
+   * Initialize the class, set up event listeners, and seed data from server if applicable.
    */
-  
-  /**
-   * @param {TMAddItemsOptions} [options]
-   */
-  constructor(options = {}) {
+  constructor() {
 
-    // Configuration
-    this.MAX_ITEMS = 6;
-    this.STORAGE_KEY = 'tm_wishlist_configs';
-    this.SYNC_URL = options.syncUrl || null;
-    this.SYNC_GET_URL = options.syncGetUrl || null;
-    this.USER_TOKEN_URL = options.userTokenUrl || null;
+    // API endpoints and settings from global WordPress-localized object (window.TMWLSettings)
+    this.MAX_ITEMS = window.TMAddItemsSettings?.max_items || 6;
+    this.STORAGE_KEY = window.TMAddItemsSettings?.storage_key || 'tm_wishlist_configs';
+    this.SYNC_URL = window.TMWLSettings?.rest_save_url || null;
+    this.SYNC_GET_URL = window.TMWLSettings?.rest_get_url || null;
+    this.USER_TOKEN_URL = window.TMWLSettings?.user_token || null;
+    this.nonce = window.TMWLSettings?.nonce || null;
 
-    this.nonce = options.nonce || null;
+    // Add isSyncing property
+    this.isSyncing = false;
 
     // Mapping of config keys to CSS classes
     this.configKeyMap = {
@@ -48,14 +42,6 @@ class TMAddItems {
 
     // Initialize
     this.init();
-
-    // On page load, check for cookie and clear localStorage if missing
-    // const cookieToken = document.cookie.match(/(?:^|; )tm_wishlist_share_token=([^;]*)/);
-    // console.log(cookieToken);
-    // if (!cookieToken) {
-    //   localStorage.removeItem('tm_wishlist_share_token');
-    //   localStorage.removeItem(this.STORAGE_KEY);
-    // }
     
   }
 
@@ -253,11 +239,6 @@ class TMAddItems {
           // Set share token in localStorage for potential use in share page
           localStorage.setItem('tm_wishlist_share_token', data.share_token);
 
-          // Update share link if returned
-          if (data.share_url) {
-            this.updateShareLink(data.share_url);
-          }
-
           // Update localStorage with new share token
           const newShareToken = data.share_token;
 
@@ -331,7 +312,23 @@ class TMAddItems {
 
     // Sync to server if configured
     if (this.SYNC_URL) {
-      this.syncToServer(configs);
+
+      // Prevent parallel syncs
+      if (this.isSyncing) return;
+
+      // Set syncing flag to prevent parallel syncs
+      this.isSyncing = true;
+
+      // Sync to server
+      syncToServer(configs, this.SYNC_URL)
+        .then(() => {
+          this.isSyncing = false;
+          // handle response if needed
+        })
+        .catch(() => {
+          this.isSyncing = false;
+          // handle error if needed
+        });
     }
   
   }
@@ -371,100 +368,6 @@ class TMAddItems {
       console.error('Failed to generate user token:', err);
 
     });
-  }
-
-  /**
-   * Sync the current wishlist to the server via REST API.
-   * - Uses `this.SYNC_URL` for guests
-   * - Payload includes `data` (array of configs) and optionally `generate_share` (boolean)
-   * - On success, updates share token and share link in the UI if returned by the server
-   * - Prevents parallel syncs with `this.isSyncing` flag
-    * @param {TMCompareItem[]} configs
-   */
-  async syncToServer(configs) {
-
-    // Prevent parallel syncs
-    if (this.isSyncing) return;
-    this.isSyncing = true;
-
-    // Ensure user token exists
-    const userToken = getCookie('tm_wishlist_user_token');
-    if (!userToken) {
-      this.isSyncing = false;
-      return;
-    }
-
-    // Ensure save URL is configured
-    const saveUrl = this.SYNC_URL;
-
-    // Exit if no save URL
-    if (!saveUrl) {
-      this.isSyncing = false;
-      return;
-    }
-
-    // Only request share token if not already present for this session
-    const shareToken = getCookie('tm_wishlist_share_token');
-    const shouldGenerateShare = !shareToken;
-
-    // Prepare payload
-    const payload = {
-      data: configs,
-      share_token: shareToken,
-      user_token: userToken,
-      ...(shouldGenerateShare ? { generate_share: true } : {})
-    };
-
-    try {
-
-      const res = await fetch(saveUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) return;
-
-      const data = await res.json();
-
-      if (data?.success) {
-
-        // Store share token if present
-        if (data.share_token) {
-
-          // Get previous values
-          const prevShareToken = getCookie('tm_wishlist_share_token');
-
-          // Only update if token has changed to avoid unnecessary UI updates
-          if (data.share_token !== prevShareToken) {
-
-            // Persist new share token
-            localStorage.setItem('tm_wishlist_share_token', data.share_token);
-
-            //Update DOM wishlist links
-            updateWishlistLinks();
-
-          }
-
-        }
-
-        // Update share link if returned
-        if (data.share_url) {
-          this.updateShareLink(data.share_url);
-        }
-      }
-
-    } catch (err) {
-
-      console.error('Error syncing wishlist to server:', err);
-
-    } finally {
-
-      this.isSyncing = false;
-
-    }
   }
 
   /**
@@ -533,9 +436,6 @@ class TMAddItems {
           this.updateWishlistCounter(totalItems);
 
         }
-
-        // Update share link if provided
-        if (data.share_url) this.updateShareLink(data.share_url);
 
     } catch (err) {
         // If any error occurs during fetch or processing, log a warning and do not seed data
@@ -921,26 +821,12 @@ console.log('Adding config:', savedConfigs);
 
   }
 
-  /**
-   * Update the visible share link UI when a new `share_url` is available.
-   * @param {string} shareUrl
-   */
-  updateShareLink(shareUrl) {
-    const container = document.getElementById('tm-compare-share-link');
-    const link = document.getElementById('tm-compare-share-url');
-    if (container && link) {
-      link.href = shareUrl;
-      link.textContent = shareUrl;
-      container.style.display = 'block';
-    }
-  }
-
 }
 
-// Instantiate
-new TMAddItems({
-  syncUrl: window.TMAddItemsSettings?.rest_save_url || null,
-  syncGetUrl: window.TMAddItemsSettings?.rest_get_url || null,
-  userTokenUrl: window.TMAddItemsSettings?.user_token || null,
-  nonce: window.TMAddItemsSettings?.nonce || null,
+// On DOM ready, instantiate the TMAddItems class to activate
+document.addEventListener('DOMContentLoaded', () => { 
+
+  // Instantiate
+  new TMAddItems();
+
 });

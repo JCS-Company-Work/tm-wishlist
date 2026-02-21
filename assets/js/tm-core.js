@@ -34,85 +34,6 @@ const clearWishlistStorage = () => {
 }
 
 /**
- * 
- * Share Button Clipboard Functionality
- */
-// const addShareButtonListeners = () => {
-
-//     // Get all share buttons
-//     const shareButtons = document.querySelectorAll('.share-button');
-
-//     // Exit if no buttons found
-//     if (!shareButtons.length) return;
-
-//     // Bind click event to each button
-//     shareButtons.forEach(button => {
-
-//         // Add click listener
-//         button.addEventListener('click', () => {
-
-//             // Get URL from data attribute
-//             const url = button.dataset.url;
-
-//             // Exit if no URL
-//             if (!url) return;
-
-//             // Copy to clipboard
-//             navigator.clipboard.writeText(url).then(() => {
-
-//                 // Show feedback
-//                 const msg = button.nextElementSibling;
-
-//                 // Show message if exists
-//                 if (msg && msg.classList.contains('share-copied')) {
-//                     msg.style.display = 'inline';
-//                     setTimeout(() => {
-//                         msg.style.display = 'none';
-//                     }, 2000);
-//                 }
-//             }).catch(err => {
-//                 console.error('Failed to copy:', err);
-//             });
-//         });
-//     });
-// }
-
-/**
- * Update the header wishlist counter
- * Animates on change and reads from localStorage
- */
-// const updateHeaderCounter = () => {
-
-//     // Get counter element
-//     const counter = document.querySelector('span.header-compare-count');
-
-//     // Exit if not found
-//     if (!counter) return;
-
-//     // Get current value from localStorage
-//     const value = Array.isArray(getSavedConfigs()) ? getSavedConfigs().length : 0;
-
-//     // Update counter text
-//     counter.textContent = String(value);
-
-//     // Trigger animation
-//     counter.classList.add('cart-animate');
-
-//     // Remove animation class after animation ends
-//     const handler = () => {
-
-//         // Remove animation class
-//         counter.classList.remove('cart-animate');
-//         counter.removeEventListener('animationend', handler);
-
-//     };
-
-//     // Listen for animation end
-//     counter.addEventListener('animationend', handler);
-
-// };
-
-/**
  * Update wishlist links in the DOM with share token
  */
 const updateWishlistLinks = () => {
@@ -171,10 +92,77 @@ const checkForCookieAndClearStorage = () => {
 
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+/**
+ * Sync the current wishlist to the server via REST API.
+ * - Payload includes `data` (array of configs) and optionally `generate_share` (boolean)
+ * - On success, updates share token and share link in the UI if returned by the server
+ * - Prevents parallel syncs with `this.isSyncing` flag
+* @param {TMCompareItem[]} configs
+*/
+const syncToServer = async (configs, saveUrl) => {
 
-    // Initialize share button listeners
-    //addShareButtonListeners();
+    // Ensure user token exists
+    const userToken = getCookie('tm_wishlist_user_token');
+
+    // Exit if no save URL
+    if (!saveUrl) return;
+
+    // Get share token from local storage
+    const shareToken = localStorage.getItem('tm_wishlist_share_token');
+    
+    // Only request share token if not already present for this session
+    const shouldGenerateShare = !shareToken;
+
+    // Prepare payload
+    const payload = {
+        data: configs,
+        share_token: shareToken,
+        user_token: userToken,
+        ...(shouldGenerateShare ? { generate_share: true } : {})
+    };
+
+    try {
+
+        const res = await fetch(saveUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        if (data?.success) {
+
+            // Store share token if present
+            if (data.share_token) {
+
+                // Only update if token has changed to avoid unnecessary UI updates
+                if (data.share_token !== shareToken) {
+
+                // Persist new share token
+                localStorage.setItem('tm_wishlist_share_token', data.share_token);
+
+                //Update DOM wishlist links
+                updateWishlistLinks();
+
+                }
+
+            }
+
+        }
+
+    } catch (err) {
+
+        console.error('Error syncing wishlist to server:', err);
+
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
 
     // On page load, check for cookie and clear localStorage if missing (but only on non-wishlist pages)
     checkForCookieAndClearStorage();
@@ -182,11 +170,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update wishlist links with share token
     updateWishlistLinks();
     
-    // Initialize header counter on load
-    //try { updateHeaderCounter(); } catch {}
 });
-
-// Keep header counter in sync on list changes
-// document.addEventListener('tmWishlistUpdated', () => {
-//     try { updateHeaderCounter(); } catch {}
-// });
