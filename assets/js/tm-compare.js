@@ -1,9 +1,20 @@
+/**
+ * TM Compare Class
+ * Handles all interactions and API calls for the compare page, including:
+ * - Managing multiple compare lists
+ * - Removing items from lists
+ * - Clearing entire lists
+ * - Sharing lists
+ * - Inline editing of list names
+ * 
+ * This class relies on configurations saved in localStorage and API endpoints for syncing data with the server.
+ */    
 class TMCompare {
 
     constructor() {
 
         // API endpoints and settings from global WordPress-localized object (window.TMWLSettings)
-        this.STORAGE_KEY = window.TMAddItemsSettings?.storage_key || 'tm_wishlist_configs';
+        this.STORAGE_KEY = window.TMWLSettings?.storage_key || 'tm_wishlist_configs';
         this.SYNC_URL = window.TMWLSettings?.rest_save_url || null;
         this.nonce = window.TMWLSettings?.nonce || null;
 
@@ -111,8 +122,8 @@ class TMCompare {
                     // Prevent default link behavior
                     e.preventDefault();
 
-                    // Call removeItem method
-                    this.removeItem(e.currentTarget);
+                    // Call removeConfig method
+                    this.removeConfig(e.currentTarget);
 
                 });
 
@@ -124,6 +135,7 @@ class TMCompare {
         const clearBtn = document.querySelector('.clear-compare');
         
         if (clearBtn) {
+            
             // Bind click event to clear button
             clearBtn.addEventListener('click', (e) => {
 
@@ -318,7 +330,7 @@ class TMCompare {
 
                     if (shareToken) {
 
-                        // Set share token in lcalStorage for potential use in share page
+                        // Set share token in localStorage for potential use in share page
                         localStorage.setItem('tm_wishlist_share_token', shareToken);
 
                         // Remove active class from all icons and toggle buttons
@@ -331,10 +343,6 @@ class TMCompare {
 
                         // Add active class to clicked icon and its toggle button       
                         icon.classList.add('selected');
-                        // const toggleBtn = icon.closest('.tm-compare-list-wrapper').querySelector('.list-toggle');
-                        // if (toggleBtn) {
-                        //     toggleBtn.classList.add('active');
-                        // }
 
                         // Extract new list title from DOM
                         const newTitle = wrapper.querySelector('.tm-compare-list-name').textContent;
@@ -357,7 +365,8 @@ class TMCompare {
      * Remove single item from compare list
      * @param {HTMLElement} btn - The button that was clicked
      */
-    removeItem(btn) {
+    removeConfig(btn) {
+
         // Find the wrapper to get the correct share token (active list)
         const wrapper = btn.closest('.tm-compare-list-wrapper');
         const shareToken = wrapper ? wrapper.dataset.shareToken : null;
@@ -367,14 +376,48 @@ class TMCompare {
         const userToken = userTokenMatch ? userTokenMatch[1] : null;
 
         // Get all user lists from localStorage
-        let allUserLists = {};
-        try {
-            allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
-        } catch {
-            allUserLists = {};
+        const allUserLists = getAllListsForUser(userToken, this.STORAGE_KEY);
+
+        // Remove item from list and get updated configs
+        const updatedLists = this.removeItemFromList(allUserLists, userToken, shareToken, btn);
+
+        // Update server if SYNC_URL is configured
+        if (this.SYNC_URL) {
+
+            // Prevent parallel syncs
+            if (this.isSyncing) return;
+
+            // Set syncing flag to prevent parallel syncs
+            this.isSyncing = true;
+
+            // Sync to server
+            syncToServer(updatedLists, this.SYNC_URL)
+            .then(() => {
+                this.isSyncing = false;
+                console.log('Sync successful');
+            })
+            .catch((error) => {
+                this.isSyncing = false;
+                console.error('Sync failed:', error);
+            });
         }
 
-        // Get configs for this user and list
+        // Remove the item from the DOM
+        this.removeItemFromDOM(btn, wrapper);
+
+    }
+
+    /**
+     * Get all compare lists for a user from localStorage, ensuring the structure is initialized properly
+     * @param {object} allUserLists 
+     * @param {string} userToken 
+     * @param {string} shareToken 
+     * @param {HTMLElement} btn 
+     * @returns {Array} Updated configs for the current list after removal
+     */
+    removeItemFromList(allUserLists, userToken, shareToken, btn) {
+
+        //Get configs for this user and list
         let configs = (allUserLists[userToken] && allUserLists[userToken][shareToken]) ? allUserLists[userToken][shareToken] : [];
 
         // Get layers IDs from data attribute
@@ -382,40 +425,42 @@ class TMCompare {
 
         // Remove matching config (match all layerIds)
         configs = configs.filter(item => {
+
+            // If item does not have layerIds, keep it (should not happen but just in case)
             if (!Array.isArray(item.layerIds)) return true;
+
             // Only remove if every id in item.layerIds is in idsArr and lengths match
             const itemIds = item.layerIds.map(String).filter(Boolean);
             const idsArrFiltered = idsArr.filter(Boolean);
+
+            // Keep the item if the lengths don't match or if not every id in item.layerIds is included in idsArr
             return !(itemIds.length === idsArrFiltered.length && itemIds.every(id => idsArrFiltered.includes(id)));
+
         });
 
-        // Update the structure and save
+        // Ensure user token level is an object
         if (!allUserLists[userToken]) allUserLists[userToken] = {};
+
+        // Ensure share token level is an array
+        if (!allUserLists[userToken][shareToken]) allUserLists[userToken][shareToken] = [];
+        
+        // Update the list for this user and share token with the filtered configs
         allUserLists[userToken][shareToken] = configs;
+
+        // Save back to localStorage
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
 
-        // Update server if SYNC_URL is configured
-        if (this.SYNC_URL) {
+        // Return updated configs
+        return configs;
 
-        // Prevent parallel syncs
-        if (this.isSyncing) return;
+    }
 
-        // Set syncing flag to prevent parallel syncs
-        this.isSyncing = true;
-
-        // Sync to server
-        syncToServer(configs, this.SYNC_URL)
-            .then(() => {
-            this.isSyncing = false;
-            // handle response if needed
-            })
-            .catch(() => {
-            this.isSyncing = false;
-            // handle error if needed
-            });
-        }
-
-        document.dispatchEvent(new Event('tmWishlistUpdated'));
+    /**
+     * Remove an item from the DOM and update the UI if the list is empty after removal
+     * @param {HTMLElement} btn 
+     * @param {HTMLElement} wrapper 
+     */
+    removeItemFromDOM(btn, wrapper) {
 
         // Remove the closest .tm-compare-item ancestor from DOM
         const itemEl = btn.closest('.tm-compare-item');
@@ -423,14 +468,22 @@ class TMCompare {
 
         // After removal, check if the list is now empty
         if (wrapper) {
+
+            // Select the list container within the wrapper
             const listContainer = wrapper.querySelector('.tm-compare-list');
+
             // If no more items remain, show empty message and hide control buttons
             if (listContainer && listContainer.querySelectorAll('.tm-compare-item').length === 0) {
+
                 // Hide control buttons if present
                 const controls = wrapper.querySelector('.list-control-buttons');
+
+                // If controls exist, hide them since the list is now empty
                 if (controls) controls.style.display = 'none';
+
                 // Show empty message
                 listContainer.innerHTML = '<p>Your wishlist is empty. You can add products to your wishlist from the product pages.</p>';
+
             }
         }
     }
@@ -442,9 +495,6 @@ class TMCompare {
 
         // Save empty list
         this.saveItems([]);
-
-        // Dispatch event to notify other components
-        document.dispatchEvent(new Event('tmWishlistUpdated'));
 
         // Remove all items from container
         document.querySelectorAll('.tm-compare-item').forEach(el => el.remove());

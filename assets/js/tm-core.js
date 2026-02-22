@@ -24,6 +24,41 @@ const getSavedConfigs = () => {
 }
 
 /**
+ * Get all lists for a user from local storage, ensuring proper structure and error handling
+ * @param {string} userToken 
+ * @param {string} storageKey 
+ * @returns {object} - Object containing all lists for the user
+ */
+const getAllListsForUser = (userToken, storageKey) => {
+
+    // Get all user lists from localStorage or initialize
+    let allUserLists = {};
+
+    // Process data
+    try {
+
+      // Attempt to parse existing localStorage data
+      allUserLists = JSON.parse(localStorage.getItem(storageKey)) || {};
+
+    } catch {
+
+      // If parsing fails, log a warning and reset to an empty object to allow saving new data
+      allUserLists = {};
+      console.warn('Failed to parse wishlist data from localStorage. Resetting to empty object.');
+
+    }
+
+    // Ensure user token structure
+    if (!allUserLists[userToken]) {
+      allUserLists[userToken] = {};
+    }
+
+    // Return user lists object
+    return allUserLists;
+
+}
+
+/**
  * Clear all wishlist-related data from local storage
  */
 const clearWishlistStorage = () => {

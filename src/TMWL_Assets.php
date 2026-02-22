@@ -61,18 +61,6 @@
                 true
             );
 
-            // // Retrieve share token
-            // $share_token = isset($_COOKIE['tm_wishlist_share_token']) ? sanitize_text_field($_COOKIE['tm_wishlist_share_token']) : "";
-
-            // Localize add items script
-            // wp_localize_script( 'tm-add-items-js', 'TMAddItemsSettings', [
-            //     'rest_save_url' => esc_url_raw( rest_url( 'tm-wishlist/v1/lists' ) ),
-            //     'rest_get_url'  => esc_url_raw( rest_url( 'tm-wishlist/v1/lists' ) ),
-            //     'user_token'    => esc_url_raw( rest_url( 'tm-wishlist/v1/user-token' ) ),
-            //     'share_token'   => $share_token,
-            //     'nonce'         => wp_create_nonce( 'wp_rest' ),
-            // ]);
-
             // Register compare page scripts and styles
             wp_register_script(
                 'tm-compare-js',
@@ -81,15 +69,6 @@
                 TMWL_VERSION,
                 true
             );
-
-            // Localize compare script
-            // wp_localize_script( 'tm-compare-js', 'TMCompareSettings', [
-            //     'rest_save_url' => esc_url_raw( rest_url( 'tm-wishlist/v1/lists' ) ),
-            //     'rest_get_url'  => esc_url_raw( rest_url( 'tm-wishlist/v1/lists' ) ),
-            //     'user_token'    => esc_url_raw( rest_url( 'tm-wishlist/v1/user-token' ) ),
-            //     'share_token'   => $share_token,
-            //     'nonce'         => wp_create_nonce( 'wp_rest' ),
-            // ]);
 
         }
 

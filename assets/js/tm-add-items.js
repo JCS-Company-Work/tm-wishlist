@@ -4,7 +4,6 @@
  * - Reads current product configuration from the DOM
  * - Stores items in localStorage (key configurable)
  * - Syncs list to the backend via WP REST API
- * - Emits a `tmWishlistUpdated` event on changes
  *
  * Data is persisted under `this.STORAGE_KEY` as an array of items.
  */
@@ -16,8 +15,8 @@ class TMAddItems {
   constructor() {
 
     // API endpoints and settings from global WordPress-localized object (window.TMWLSettings)
-    this.MAX_ITEMS = window.TMAddItemsSettings?.max_items || 6;
-    this.STORAGE_KEY = window.TMAddItemsSettings?.storage_key || 'tm_wishlist_configs';
+    this.MAX_ITEMS = window.TMWLSettings?.max_items || 6;
+    this.STORAGE_KEY = window.TMWLSettings?.storage_key || 'tm_wishlist_configs';
     this.SYNC_URL = window.TMWLSettings?.rest_save_url || null;
     this.SYNC_GET_URL = window.TMWLSettings?.rest_get_url || null;
     this.USER_TOKEN_URL = window.TMWLSettings?.user_token || null;
@@ -34,9 +33,6 @@ class TMAddItems {
       model: 'obj-model'
     };
 
-    // Bind event handlers
-    this.onWishlistUpdated = this.onWishlistUpdated.bind(this);
-
     // Reference to wishlist status element
     this.wishlistStatus = document.querySelector('.tm-compare-status');
 
@@ -50,26 +46,15 @@ class TMAddItems {
    */
   init() {
 
-    // Listen for wishlist updates
-    document.addEventListener('tmWishlistUpdated', this.onWishlistUpdated);
+    // Monitor layer/model changes
+    this.monitorLayerChanges();
 
-    // On DOM ready
-    document.addEventListener('DOMContentLoaded', () => {
+    // Add listener to add/remove buttons
+    this.activateButtons();
 
-      // Monitor layer/model changes
-      this.monitorLayerChanges();
-
-      // Add listener to add/remove buttons
-      this.activateButtons();
-
-      // Update wishlist counter
-      this.updateWishlistCounter(getSavedConfigs().length);
-
-      // Seed from server if applicable
-      this.seedFromServer();
+    // Seed from server if applicable
+    this.seedFromServer();
       
-    });
-
   }
 
   /************ Event Wiring ************/
@@ -183,14 +168,13 @@ class TMAddItems {
 
   /**
    * Persist list to localStorage and sync to server if configured.
-   * Also dispatches a `tmWishlistUpdated` event on `document`.
    * @param {TMCompareItem[]} configs
    */
   saveConfigs(configs) {
 
     // Get user token and share token
     const userToken = getCookie('tm_wishlist_user_token') ?? this.generateUserToken();
-    const shareToken = getCookie('tm_wishlist_share_token') ?? null;
+    const shareToken = localStorage.getItem('tm_wishlist_share_token') ?? null;
 
     // Return if user token is missing
     if (!userToken) return;
@@ -205,10 +189,6 @@ class TMAddItems {
       this.createList(userToken, configs);
 
     }
-
-
-    // Emit update event
-    document.dispatchEvent(new Event('tmWishlistUpdated'));
 
   }
 
@@ -282,28 +262,8 @@ class TMAddItems {
    */
   updateExistingList(userToken, shareToken, configs) {
 
-    // Get all user lists from localStorage or initialize
-    let allUserLists = {};
-
-    // Process data
-    try {
-
-      // Attempt to parse existing localStorage data
-      allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
-
-    } catch {
-
-      // If parsing fails, log a warning and reset to an empty object to allow saving new data
-      allUserLists = {};
-      console.warn('Failed to parse wishlist data from localStorage. Resetting to empty object.');
-
-    }
-
-    // Ensure user token structure
-    if (!allUserLists[userToken]) {
-      allUserLists[userToken] = {};
-    }
-
+    const allUserLists = getAllListsForUser(userToken, this.STORAGE_KEY);
+console.log('user lists before update:', allUserLists);
     // Update only the active list for this user
     allUserLists[userToken][shareToken] = configs;
 
@@ -431,10 +391,6 @@ class TMAddItems {
           // Save back to localStorage
           localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
 
-          // Update counter with total items in all lists
-          const totalItems = Object.values(allUserLists[userToken]).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
-          this.updateWishlistCounter(totalItems);
-
         }
 
     } catch (err) {
@@ -530,7 +486,6 @@ class TMAddItems {
   }
 
   /**
-   * 
    * Extract product ID from a button element.
    * 
    * @param {HTMLElement} target 
@@ -718,7 +673,7 @@ class TMAddItems {
       price,
       ...currentConfig
     });
-console.log('Adding config:', savedConfigs);
+
     // Save updated list
     this.saveConfigs(savedConfigs);
 
@@ -764,39 +719,6 @@ console.log('Adding config:', savedConfigs);
   /************ UI Updates ************/
 
   /**
-   * Handler for `tmWishlistUpdated` event.
-   * Updates the wishlist counter.
-   */
-  onWishlistUpdated() {
-    this.updateWishlistCounter(getSavedConfigs().length);
-  }
-
-  /**
-   * Animate the cart counter after adding an item
-   */
-  updateWishlistCounter(wishlistCount) {
-
-      // Select the compare counter from DOM
-      const cartCounter = document.querySelector('span.header-compare-count');
-
-      // If element exists, update it
-      if (cartCounter) {
-
-          // Update the count
-          cartCounter.textContent = wishlistCount;
-
-          // Trigger animation
-          cartCounter.classList.add('cart-animate');
-
-          // Remove animation class after animation ends
-          cartCounter.addEventListener('animationend', function handler() {
-              cartCounter.classList.remove('cart-animate');
-              cartCounter.removeEventListener('animationend', handler);
-          });
-      }
-  }
-
-  /**
    * 
    * Display a temporary status message in the wishlist status element.
    * 
@@ -823,10 +745,7 @@ console.log('Adding config:', savedConfigs);
 
 }
 
-// On DOM ready, instantiate the TMAddItems class to activate
-document.addEventListener('DOMContentLoaded', () => { 
-
-  // Instantiate
-  new TMAddItems();
-
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    new TMAddItems();
 });
