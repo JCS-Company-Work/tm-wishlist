@@ -33,9 +33,6 @@ class TMAddItems {
       model: 'obj-model'
     };
 
-    // Reference to wishlist status element
-    this.wishlistStatus = document.querySelector('.tm-compare-status');
-
     // Initialize
     this.init();
     
@@ -612,7 +609,6 @@ console.log('user lists before update:', allUserLists);
       delete copy.price;
 
       // Compare configurations
-      console.log(this.areConfigsEqual(copy, currentConfig));
       return this.areConfigsEqual(copy, currentConfig);
 
     });
@@ -644,7 +640,7 @@ console.log('user lists before update:', allUserLists);
 
     // Get current config
     const currentConfig = this.getCurrentProductConfig();
-    console.log('currentConfig:', currentConfig);
+
     // Check for matches (product_id + layerIds signature)
     const match = this.findMatchingConfigIndex(savedConfigs, currentConfig, productId);
 
@@ -665,7 +661,7 @@ console.log('user lists before update:', allUserLists);
       return;
 
     }
-    console.log('savedConfigs:', savedConfigs);
+
     // Add new config
     savedConfigs.push({
       product_id: productId,
@@ -726,18 +722,21 @@ console.log('user lists before update:', allUserLists);
    */
   statusText(message) {
 
+    // Reference to wishlist status element
+    const wishlistStatus = document.querySelector('.tm-compare-status');
+
     // Update status text
-    this.wishlistStatus.innerText = message;
+    wishlistStatus.innerText = message;
 
     // Show the status text
-    this.wishlistStatus.classList.remove('hidden');
-    this.wishlistStatus.classList.add('visible');
+    wishlistStatus.classList.remove('hidden');
+    wishlistStatus.classList.add('visible');
 
     // Hide after 1.5 seconds
     setTimeout(() => {
 
-      this.wishlistStatus.classList.remove('visible');
-      this.wishlistStatus.classList.add('hidden');
+      wishlistStatus.classList.remove('visible');
+      wishlistStatus.classList.add('hidden');
 
     }, 1500);
 

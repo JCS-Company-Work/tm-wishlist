@@ -77,6 +77,9 @@ class TMCompare {
 
                     // Get share token from closest wrapper data attribute
                     const share_token = e.currentTarget.closest('.tm-compare-list-wrapper').dataset.shareToken;
+
+                    // Construct API path using share token
+                    const apiPath = `wp-json/tm-wishlist/v1/lists/${share_token}`;
                     
                     // Query appropriate API based on action
                     switch(action) {
@@ -84,13 +87,13 @@ class TMCompare {
                             this.shareWishlist(e.currentTarget);
                             break;
                         case 'clear_wishlist':
-                            this.triggerAction(`wp-json/tm-wishlist/v1/lists/${share_token}/items`, 'DELETE', share_token);
+                            this.triggerAction(`${apiPath}/items`, 'DELETE', share_token);
                             break;
                         case 'delete_list_me':
-                            this.triggerAction(`wp-json/tm-wishlist/v1/lists/${share_token}/user`, 'DELETE', share_token);
+                            this.triggerAction(`${apiPath}/user`, 'DELETE', share_token);
                             break;
                         case 'delete_list_all':
-                            this.triggerAction(`wp-json/tm-wishlist/v1/lists/${share_token}`, 'DELETE', share_token);
+                            this.triggerAction(`${apiPath}`, 'DELETE', share_token);
                             break;
                         default:
                             console.warn('Unknown action:', action);
@@ -359,7 +362,7 @@ class TMCompare {
 
     }
 
-    /** ================= Core Actions ================= **/
+    /** ================= User Triggered Actions ================= **/
 
     /**
      * Remove single item from compare list
