@@ -4,8 +4,20 @@
   "description": "WordPress Wishlist Plugin",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"No JS tests configured. Use composer test for PHP.\" && exit 0"
+    "test": "jest"
   },
   "author": "Neil Williams",
-  "license": "GPL-2.0-or-later"
+  "license": "GPL-2.0-or-later",
+  "devDependencies": {
+    "@babel/preset-env": "^7.29.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "babel-jest": "^30.2.0",
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom"
+  },
+  "type": "module"
 }
