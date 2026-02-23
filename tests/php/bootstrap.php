@@ -4,15 +4,15 @@
     ob_start();
 
     // Load .env variables
-    if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    if (file_exists(__DIR__ . '/../../vendor/autoload.php')) {
 
         // Load Composer autoload
-        require_once __DIR__ . '/../vendor/autoload.php';
+        require_once __DIR__ . '/../../vendor/autoload.php';
 
         // Load .env variables if Dotenv is available
         if (class_exists('Dotenv\\Dotenv')) {
 
-            Dotenv\Dotenv::createImmutable(dirname(__DIR__), '.env')->load();
+            Dotenv\Dotenv::createImmutable(dirname(__DIR__), '/../.env')->load();
             echo ".env loaded\n";
 
         } else {

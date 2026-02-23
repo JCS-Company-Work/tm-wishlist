@@ -5,6 +5,9 @@
     use TMWishlist\TMWL_DB;
 
     class TMWL_CompareTest extends TestCase {
+        
+        // Store a share token for use in tests
+        protected static $test_share_token;
 
         /**
          * Test if the TMWL_Compare class exists
@@ -12,10 +15,92 @@
          * @return void
          */
         public function testCompareClassExists() {
+
             $this->assertTrue(
                 class_exists(TMWishlist\TMWL_Compare::class),
                 'TMWL_Compare class should exist.'
             );
+            
+        }
+
+
+        /**
+         * Set up before class - insert test data into the database for use in tests
+         *
+         * @return void
+         */
+        public static function setUpBeforeClass(): void {
+            
+            global $wpdb;
+
+            // Ensure $wpdb is available
+            if (!isset($wpdb) || !$wpdb instanceof \wpdb) {
+                return;
+            }
+
+            // Define constants if not already defined (simulate plugin environment)
+            if (!defined('TMWL_URL')) {
+                define('TMWL_URL', '/assets/');
+            }
+            if (!defined('TMWL_VERSION')) {
+                define('TMWL_VERSION', '1.0.0');
+            }
+
+            // Get table name
+            $table_name = \TMWishlist\TMWL_DB::get_table_name();
+
+            // Known test values
+            $user_token = 'test-user-token';
+            $share_token = 'test-share-token';
+            self::$test_share_token = $share_token;
+
+            $items = [
+                [
+                    'product_id'   => '4801',
+                    'productName'  => 'Tavolo Piazza Alveo',
+                    'price'        => '\u00a32000.00',
+                    'colour'       => 'Yamuna',
+                    'base'         => 'Yamuna',
+                    'model'        => '300cm',
+                    'layerIds'     => ['5301', '5401'],
+                    'url'          => 'https://tm-store-jan-26.local/product/tavolo-piazza-alveo-solido-12/',
+                ]
+            ];
+
+            // Insert test data into the database
+            $wpdb->insert(
+                $table_name,
+                [
+                    'user_token'   => $user_token,
+                    'share_token'  => $share_token,
+                    'data'         => wp_json_encode($items),
+                    'updated_at'   => current_time('mysql'),
+                ],
+                ['%s', '%s', '%s', '%s']
+            );
+
+        }
+
+        /**
+        * Clean up after class - remove test data from the database
+        *
+        * @return void
+        */
+        public static function tearDownAfterClass(): void {
+
+            global $wpdb;
+
+            // Ensure $wpdb is available
+            if (!isset($wpdb) || !$wpdb instanceof \wpdb) {
+                return;
+            }
+
+            // Get table name
+            $table_name = \TMWishlist\TMWL_DB::get_table_name();
+            
+            // Delete test data based on the known share token
+            $wpdb->delete($table_name, ['share_token' => self::$test_share_token]);
+
         }
 
         /**
@@ -120,6 +205,11 @@
                     $valid_row = $row;
                     break;
                 }
+            }
+
+            // If no valid row is found, fail the test with a message
+            if (!$valid_row) {
+                $this->fail('No valid test data found in the database. Please seed test data before running this test.');
             }
 
             // Init $wp_query if not set

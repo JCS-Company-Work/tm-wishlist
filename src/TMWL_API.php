@@ -86,6 +86,12 @@
         
         }
 
+        /**
+         * Create a new list with a unique name for the user and return the share token, user token, and list HTML
+         *
+         * @param \WP_REST_Request $request
+         * @return \WP_REST_RESPONSE
+         */
         public function create_new_list( \WP_REST_Request $request ) {
 
             global $wpdb;
@@ -164,6 +170,14 @@
             ]);
         }
 
+        /**
+         * Generate a unique table name for a user's wishlist
+         *
+         * @param \wpdb $wpdb
+         * @param string $user_token
+         * @param string $table_name
+         * @return string
+         */
         public function unique_table_name($wpdb, $user_token, $table_name) {
 
             // Set a default base name for list
@@ -204,10 +218,11 @@
         }
 
         /**
-         * Save comparison data
-         * - NEVER regenerate on update
-         * - Cookie + client key are authoritative
-         */
+        * Save comparison data for a given share token, with ownership check and user token management
+        *
+        * @param \WP_REST_Request $request
+        * @return \WP_REST_Response
+        */
         public function save_comparison( \WP_REST_Request $request ) {
 
             global $wpdb;
@@ -384,7 +399,7 @@
             if ( ! $rows ) {
                 return rest_ensure_response([
                     'user_token'    => $user_token,
-                    'data'          => [],
+                    'lists'         => [],
                     'edit_allowed'  => false,
                 ]);
             }
@@ -396,7 +411,7 @@
                     'share_token'   => $row->share_token,
                     'user_token'    => $row->user_token,
                     'data'          => json_decode( $row->data, true ) ?: [],
-                    'edit_allowed'  => false, // For now, we can set this to false or implement logic based on user_token
+                    'edit_allowed'  => false,
                 ];
             }, $rows);
 

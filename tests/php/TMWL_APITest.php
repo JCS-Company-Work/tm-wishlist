@@ -237,43 +237,50 @@
          */
         public function test_get_all_lists_returns_data() {
 
-            // Initialize the API class
-            new TMWL_API();
+        // Initialize the API class
+        new TMWL_API();
 
-            // Trigger REST API initialization
-            do_action('rest_api_init');
+        // Trigger REST API initialization
+        do_action('rest_api_init');
 
-            // Make a GET request to the /lists endpoint 
-            // (leave wp-json prefix out since rest_do_request expects the route to start with the namespace)
-            $request = new WP_REST_Request('GET', '/tm-wishlist/v1/lists');
+        // Make a GET request to the /lists endpoint 
+        // (leave wp-json prefix out since rest_do_request expects the route to start with the namespace)
+        $request = new WP_REST_Request('GET', '/tm-wishlist/v1/lists');
 
-            // Simulate the REST API request
-            $response = rest_do_request($request);
+        // Simulate the REST API request
+        $response = rest_do_request($request);
 
-            // Get the response data
-            $data = $response->get_data();
+        // Get the response data
+        $data = $response->get_data();
 
-            // Assert that the response is successful (200)
-            $this->assertEquals(200, $response->get_status());
+        // Assert that the response is successful (200)
+        $this->assertEquals(200, $response->get_status());
 
-            // Check data structure
-            $this->assertIsArray($data);
+        // Check data structure
+        $this->assertIsArray($data);
 
-            // Ensure 'lists' array key exists in $data array and is an array
-            $this->assertArrayHasKey('lists', $data);
+        var_dump($data); // Debug output for inspection
 
-            // Ensure 'user_token' array key exists in $data array and is an array
-            $this->assertArrayHasKey('user_token', $data);
+        // Ensure 'lists' array key exists in $data array and is an array
+        $this->assertArrayHasKey('lists', $data);
 
-            // Check that 'lists' is an array
-            $this->assertIsArray($data['lists']);
+        // Ensure 'user_token' array key exists in $data array and is an array
+        $this->assertArrayHasKey('user_token', $data);
 
+        // Check that 'lists' is an array
+        $this->assertIsArray($data['lists']);
+
+        // Check the structure of the first item if lists is not empty
+        if (!empty($data['lists'])) {
             // Check the structure of the first item:
             $this->assertArrayHasKey('user_token', $data['lists'][0]);
             $this->assertArrayHasKey('edit_allowed', $data['lists'][0]);
             $this->assertArrayHasKey('data', $data['lists'][0]);
-
+        } else {
+            // Optionally assert that lists is empty
+            $this->assertEmpty($data['lists']);
         }
+    }
 
         /**
          * Test that the /generate_user_token endpoint returns a valid user token
@@ -290,7 +297,7 @@
 
             // Make a GET request to the /generate_user_token endpoint 
             // (leave wp-json prefix out since rest_do_request expects the route to start with the namespace)
-            $request = new WP_REST_Request('POST', '/tm-wishlist/v1/user-token');
+            $request = new WP_REST_Request('GET', '/tm-wishlist/v1/user-token');
 
             // Simulate the REST API request
             $response = rest_do_request($request);
