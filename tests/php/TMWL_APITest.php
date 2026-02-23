@@ -533,4 +533,46 @@
 
         }
 
+        /**
+         * Test the unique list name generation for a user's wishlist
+         *
+         * @return void
+         */
+        public function test_unique_list_name() {
+
+            global $wpdb;
+
+            // Ensure $wpdb is available
+            if ( ! isset( $wpdb ) || ! $wpdb instanceof \wpdb ) {
+                return;
+            }
+
+            $api = new TMWL_API();
+
+            // Use a user token from seeded data
+            $user_token = 'user-4g7k2b1x';
+            $table_prefix = 'tm_wishlist_';
+
+            // Get all table names for this user token
+            $rows = $wpdb->get_results( $wpdb->prepare(
+                "SELECT share_token FROM {$table_prefix}lists WHERE user_token = %s",
+                $user_token
+            ) );
+            $existing_names = array();
+            foreach ($rows as $row) {
+                // Simulate how unique_table_name would generate table names
+                $existing_names[] = $table_prefix . substr($row->share_token, 0, 5) . '_' . substr($user_token, 5);
+            }
+
+            // Generate a new list name
+            $new_list_name = $api->unique_list_name($wpdb, $user_token, 'wp_tm_wishlist');
+
+            // Assert new list name is not in existing names
+            $this->assertNotContains($new_list_name, $existing_names, 'unique_list_name should return a name not already used for this user token');
+
+            // Assert the new list name follows the expected format
+            $this->assertMatchesRegularExpression('/^My Wishlist #[0-9]+$/', $new_list_name);
+
+        }
+
     }

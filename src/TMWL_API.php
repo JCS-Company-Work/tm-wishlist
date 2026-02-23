@@ -121,7 +121,7 @@
             }
 
             // Generate a unique list name for this user
-            $new_list_name = $this->unique_table_name($wpdb, $user_token, $table_name);
+            $new_list_name = $this->unique_list_name($wpdb, $user_token, $table_name);
 
             // Generate new share token
             $share_token = bin2hex(random_bytes(10));
@@ -171,14 +171,14 @@
         }
 
         /**
-         * Generate a unique table name for a user's wishlist
+         * Generate a unique list name for a user's wishlist
          *
          * @param \wpdb $wpdb
          * @param string $user_token
          * @param string $table_name
          * @return string
          */
-        public function unique_table_name($wpdb, $user_token, $table_name) {
+        public function unique_list_name($wpdb, $user_token, $table_name) {
 
             // Set a default base name for list
             $base_name = 'My Wishlist';
