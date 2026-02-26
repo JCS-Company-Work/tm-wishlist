@@ -242,14 +242,13 @@ class TMCompare {
     }
 
     /**
-     * On page load, check for active list share token in cookies 
+     * On page load, check for active list share token in localstorage 
      * and set the corresponding list as active, also scroll to it
      */
     setActiveListOnInit() {
 
-        // Get share token from cookie
-        const cookieMatch = document.cookie.match(/(?:^|; )tm_wishlist_share_token=([^;]*)/);
-        const shareToken = cookieMatch ? cookieMatch[1] : null;
+        // Get share token from localstorage
+        const shareToken = localStorage.getItem('tm_wishlist_share_token');
 
         if (shareToken) {
 
@@ -484,6 +483,9 @@ class TMCompare {
                 // If controls exist, hide them since the list is now empty
                 if (controls) controls.style.display = 'none';
 
+                // Remove grid from list container
+                listContainer.classList.remove('tm-compare-grid');
+
                 // Show empty message
                 listContainer.innerHTML = '<p>Your wishlist is empty. You can add products to your wishlist from the product pages.</p>';
 
@@ -507,6 +509,7 @@ class TMCompare {
 
         // Show empty message
         if (container) {
+            container.classList.remove('tm-compare-grid');
             container.innerHTML = '<p>Wishlist empty, visit product pages to add items.</p>';
         }
 

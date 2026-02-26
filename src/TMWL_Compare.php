@@ -81,6 +81,16 @@
             // Get row as associative array
             $row = $wpdb->get_row( $sql, ARRAY_A );
 
+            // Verify ownership based on user token in cookie matching row's user token
+            $user_token_cookie = $_COOKIE['tm_wishlist_user_token'] ?? '';
+
+            // If user token cookie exists and matches row's user token, mark as owner
+            if ( $user_token_cookie === $row['user_token'] ) {
+                $row['is_owner'] = true;
+            } else {
+                $row['is_owner'] = false;
+            }
+
             // If no row or no data, return message
             if ( ! $row || empty( $row['data'] ) ) {
                 return '<p>Your wishlist is empty.</p>';
@@ -147,12 +157,12 @@
                     if (empty($products) || !is_array($products)) {
                         echo '<div class="tm-compare-list tm-compare-list-multi">';
                         echo '<p>Your wishlist is empty. To start, view our products pages.</p>';
-                        echo '</div>'; // Close .tm-compare-list
+                        echo '</div>'; // Close .tm-compare-list-multi
                         echo '</div>'; // Close .tm-compare-list-wrapper
                         continue;
                     }
 
-                    echo '<div class="tm-compare-list tm-compare-list-multi">';
+                    echo '<div class="tm-compare-list tm-compare-grid tm-compare-list-multi">';
 
                         foreach ($products as $item) {
 
@@ -181,6 +191,18 @@
                                 <?php if ( ! empty( $item['model'] ) ) : ?>
                                     <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
                                 <?php endif; ?>
+                                <i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
+                                    data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>
+                                <span 
+                                    class="remove-from-compare" 
+                                    data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
+                                    data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>">
+                                    <!-- SVG Cross Icon -->
+                                    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                                        <line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" stroke-width="2"/>
+                                        <line x1="13" y1="3" x2="3" y2="13" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                </span>
                             </div>
                             <?php
                         }
@@ -229,21 +251,19 @@
 
             // Early return if no products
             if ( ! is_array( $products ) || empty( $products ) ) {
-                return '<p>Your wishlist is empty. You can add products to your wishlist from the product pages.</p>';
+                return '<p>Your wishlist is empty. To start, view our products pages.</p>';
             }
 
             // Render comparison table
             ob_start();
 
-            // Check if user or owner based on whether share token cookie exists
-            $isOwner = isset($_COOKIE['tm_wishlist_share_token']);
-
-            if(!$isOwner) {
+            // If user is not owner, show message about view only wishlist
+            if(!$row['is_owner']) {
                 echo '<p>This is a view only wishlist. To create your own wishlist, please add products from the product pages.</p>';
             }
 
             // Render active list controls with active list name is user is list owner
-            if($isOwner) {
+            if($row['is_owner']) {
                 
                 echo $this->activeWishlistControls('single-list', $row['list_name']);
 
@@ -255,7 +275,7 @@
 
                     echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($row['list_name']) . '</h3><button type="button" class="edit-list-name" aria-label="Edit list name">edit</button></div>';
                     
-                    echo '<div class="tm-compare-list">';
+                    echo '<div class="tm-compare-list tm-compare-grid">';
 
                         // Loop through products and display details
                         foreach ( $products as $item ) {
@@ -287,7 +307,7 @@
                                 <?php if ( ! empty( $item['model'] ) ) : ?>
                                     <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
                                 <?php endif; ?>
-                                <?php if ( $isOwner ) : ?>
+                                <?php if ( $row['is_owner'] ) : ?>
                                     <i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
                                         data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>
                                     <span 
@@ -309,7 +329,7 @@
                     echo '</div>';
                 
                     // If owner, show control buttons (share, clear, delete)
-                    if ( $isOwner ) {
+                    if ( $row['is_owner'] ) {
                         echo $this->listControlButtons($share_token_param);
                     }
 
@@ -328,40 +348,6 @@
          * @param string $active_list_name
          * @return void
          */
-        // public function activeWishlistControls($type, $active_list_name) {
-
-        //     // Build active list name HTML if active list exists
-        //     $active_list_html = !empty($active_list_name)
-        //         ? '<p class="active-list-name">Active Wishlist: </p><span class="active-list-span button">' . esc_html($active_list_name) . '</span>'
-        //         : '';
-
-        //     // Build buttons HTML based on type (single-list or multi-list)    
-        //     $buttons_html = '';
-
-        //     // Final HTML output
-        //     $final_html = '';
-
-        //     // If multi list page we don;t need to show manage lists button as we are already there
-        //     if ($type === 'multi-list') {
-
-        //         $buttons_html .= '<button id="create_list" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Create New List</button>';
-
-        //         // Combine active list name and buttons HTML, if active list exists
-        //         $final_html .=  $active_list_html . $buttons_html;    
-
-        //     } else { 
-        //         // Otherwise show both buttons
-        //         $buttons_html .= '<button id="create_list" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Create New List</button>';
-        //         $buttons_html .= '<a href="/wishlist" id="manage_lists" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" role="button" aria-pressed="false">Manage Lists</a>';
-                
-        //         // Return button HTML without active list on single share page
-        //         $final_html .=  $buttons_html;
-        //     }
-
-        //     // Return combined HTML
-        //     return '<div class="active-list-controls">' . $final_html . '</div>';
-        // }
-
         public function activeWishlistControls($type, $active_list_name) {
 
             

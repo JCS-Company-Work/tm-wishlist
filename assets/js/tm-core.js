@@ -73,8 +73,8 @@ const clearWishlistStorage = () => {
  */
 const updateWishlistLinks = () => {
 
-    // Get share token from cookie
-    const token = getCookie('tm_wishlist_share_token');
+    // Get share token from local storage
+    const token = localStorage.getItem('tm_wishlist_share_token');
     console.log('Updating wishlist links with token:', token);
     // Update all wishlist links except #manage_lists
     if (token) {
@@ -90,7 +90,7 @@ const updateWishlistLinks = () => {
 /**
  * Get cookie value by name
  * @param {string} name - Cookie name
- * @returns {string|null
+ * @returns {string|null} - Cookie value or null if not found
  */
 const getCookie = (name) => {
 
@@ -113,15 +113,15 @@ const getCookie = (name) => {
  */
 const checkForCookieAndClearStorage = () => {
 
-    // Get share token from cookie
-    const cookieToken = getCookie('tm_wishlist_share_token');
+    // Get share token from local storage
+    const shareToken = localStorage.getItem('tm_wishlist_share_token');
 
     // Check if we're on a wishlist page (either main or share) to avoid clearing storage unnecessarily
     const isWishlistPage = window.location.pathname.startsWith('/wishlist');
 
     // Also check for share page to avoid clearing storage when viewing a shared wishlist
     const isSharePage = /\/wishlist\/share\//.test(window.location.pathname);
-    if ((!cookieToken || cookieToken === '') && !isWishlistPage && !isSharePage) {
+    if ((!shareToken || shareToken === '') && !isWishlistPage && !isSharePage) {
         clearWishlistStorage();
     }
 

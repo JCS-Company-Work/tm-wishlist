@@ -167,23 +167,36 @@ class TMAddItems {
    * Persist list to localStorage and sync to server if configured.
    * @param {TMCompareItem[]} configs
    */
-  saveConfigs(configs) {
+  async saveConfigs(configs) {
 
-    // Get user token and share token
-    const userToken = getCookie('tm_wishlist_user_token') ?? this.generateUserToken();
-    const shareToken = localStorage.getItem('tm_wishlist_share_token') ?? null;
+    // Check cookies for user token
+    let userToken = getCookie('tm_wishlist_user_token');
+
+    // If not present in cookies, generate a new one
+    if (!userToken) {
+      userToken = await this.generateUserToken();
+    }
 
     // Return if user token is missing
     if (!userToken) return;
 
-    if(shareToken) {
+    // Get share token from local storage
+    let shareToken = localStorage.getItem('tm_wishlist_share_token') ?? null;
+    console.log('share token:', shareToken);
 
+    if (shareToken) {
+
+      // If share token exists, update existing list on server
       this.updateExistingList(userToken, shareToken, configs);
 
     } else {
 
-      // If no share token, create new list on server which will return a share token and update localStorage in callback
-      this.createList(userToken, configs);
+      // If no share token, create new list on server and wait for share token
+      shareToken = await this.createList(userToken, configs);
+
+      if (shareToken) {
+        this.updateExistingList(userToken, shareToken, configs);
+      }
 
     }
 
@@ -194,25 +207,22 @@ class TMAddItems {
    * @param {string} userToken
    * @param {TMCompareItem[]} configs
    */
-  createList(userToken, configs) {
-
+  async createList(userToken, configs) {
     // If no share token, create new list
-      fetch('/wp-json/tm-wishlist/v1/lists/new', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-              user_token : userToken,
-              data: configs 
-          })
+    return fetch('/wp-json/tm-wishlist/v1/lists/new', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_token: userToken,
+        data: configs
       })
+    })
       .then(response => response.json())
       .then(data => {
-
         // If list created successfully, store share token and update localStorage
         if (data?.success) {
-          
           // Set share token in localStorage for potential use in share page
           localStorage.setItem('tm_wishlist_share_token', data.share_token);
 
@@ -221,32 +231,25 @@ class TMAddItems {
 
           // Get all user lists from localStorage or initialize
           let allUserLists = {};
-  
           try {
-
             // Attempt to parse existing localStorage data
             allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
           } catch {
-
             // If parsing fails, log a warning and reset to an empty object to allow saving new data
             allUserLists = {};
             console.warn('Failed to parse wishlist data from localStorage during share token update. Resetting to empty object.');
-
           }
-  
           // Ensure user token structure exists
           if (!allUserLists[userToken]) {
             allUserLists[userToken] = {};
           }
-  
           // Set new share token list to current configs
           allUserLists[userToken][newShareToken] = configs;
-
           // Save back to localStorage
           localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
-
+          return newShareToken;
         }
-
+        return null;
       });
 
   }
@@ -291,40 +294,51 @@ console.log('user lists before update:', allUserLists);
   }
 
   /**
-   * Generate a new user token.
+   * Generate a user token by making a request to the server.
+   * - If successful, stores the token in a cookie and returns it.
+   * - If the request fails or no token is returned, logs an error and returns null.
    * @returns {Promise<string|null>} The generated user token or null if failed.
    */
-  generateUserToken() {
+  async generateUserToken() {
 
-    // If user token URL is not configured, we cannot generate a token
+    // If no user token URL is configured, log an error and return null
     if (!this.USER_TOKEN_URL) {
       console.error('User token URL is not configured.');
       return null;
     }
 
-    // Make request to server to generate user token
-    fetch(this.USER_TOKEN_URL, {
-      method: 'GET',
-      headers: {  
-        'Content-Type': 'application/json'   
-      },
-      credentials: 'same-origin'
-    }).then(res => res.json())
-    .then(data => {
-      if (data?.user_token) {
-        // Set cookie for server access (expires in 1 year)
-        document.cookie = `tm_wishlist_user_token=${data.user_token}; path=/; SameSite=Lax; max-age=31536000`;
+    try {
 
-        // Return the generated user token
+      // Make request to server to generate user token
+      const res = await fetch(this.USER_TOKEN_URL, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin'
+      });
+
+      // Data response
+      const data = await res.json();
+
+      // If user token is returned, set it in cookies and return
+      if (data?.user_token) {
+
+        document.cookie = `tm_wishlist_user_token=${data.user_token}; path=/; SameSite=Lax; max-age=31536000`;
         return data.user_token;
+
       }
 
-    }).catch(err => { 
+      // If no token returned, log an error and return null
+      console.error('User token was not returned by the server.');
+      return null;
 
-      // If token generation fails, log an error. 
+    } catch (err) {
+
+      // If an error occurs during the request, log the error and return null
       console.error('Failed to generate user token:', err);
+      return null;
 
-    });
+    }
+
   }
 
   /**
