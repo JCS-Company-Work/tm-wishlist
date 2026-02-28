@@ -85,7 +85,7 @@
             $user_token_cookie = $_COOKIE['tm_wishlist_user_token'] ?? '';
 
             // If user token cookie exists and matches row's user token, mark as owner
-            if ( $user_token_cookie === $row['user_token'] ) {
+            if ( $user_token_cookie && $row && isset($row['user_token']) && $user_token_cookie === $row['user_token'] ) {
                 $row['is_owner'] = true;
             } else {
                 $row['is_owner'] = false;

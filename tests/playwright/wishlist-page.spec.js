@@ -1,33 +1,26 @@
 import { test, expect } from '@playwright/test';
+import { addProductToWishlist } from './helpers/product/add-product-to-wishlist.js';
+import { assertRemoveFromWishlistVisible } from './helpers/buttons/assert-remove-from-wishlist-visible.js';
+import { getShareTokenFromStorage } from './helpers/storage/get-share-token-from-storage.js';
+import { getProductConfigsFromStorage } from './helpers/storage/get-product-configs-from-storage.js';
+import { clickButton } from './helpers/buttons/click-button.js';
+import { captureApiResponse } from './helpers/api/capture-api-response.js';
 
-test('User renames their only wishlist from the wishlist page', async ({ page }) => {
+test('User renames their only wishlist from the wishlist page', async ({ page, baseURL }) => {
 
-    // Click the "Add to wishlist" button on a product page to create a wishlist
-    await page.goto('https://tm-store-jan-26.local/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox');
-    
-    // Clear local storage to ensure the user has no existing wishlist data
-    await page.evaluate(() => localStorage.clear());
-    
-    // Click the "Add to wishlist" button
-    const addButton = page.getByRole('button', { name: 'Add to wishlist' });
-    
-    // Wait for and click the add to wishlist button
-    await addButton.waitFor({ state: 'visible' });
-    
-    // Click the add to wishlist button to create a new wishlist
-    await addButton.click();
+    // Add a product to the wishlist and generate a share token
+    await addProductToWishlist(page, { baseURL, productUrl: '/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox' });
 
-    // Go back to the wishlist page
-    await page.goto('https://tm-store-jan-26.local/wishlist');
+    // Wait for and assert the new button state
+    await assertRemoveFromWishlistVisible(page);
 
-    // Click the "Edit wishlist name" button
-    const editNameButton = page.getByRole('button', { name: 'edit' });
+    // Assert the wishlist configs are set in localStorage so that edit button is visible on the wishlist page
+    await getProductConfigsFromStorage(page);
 
-    // Wait for and click the edit name button
-    await editNameButton.waitFor({ state: 'visible' });
-    
-    // Click the edit name button to open the rename input
-    await editNameButton.click();
+    // Go to the wishlist page
+    await page.goto(`${baseURL}/wishlist/`);
+
+    await clickButton(page, 'Edit list name');
 
     // Locate wishlist name input
     const nameInput = page.locator('#edit-list-name-input');
@@ -50,3 +43,36 @@ test('User renames their only wishlist from the wishlist page', async ({ page })
     await expect(wishlistName).toBeVisible();
 
 });
+
+test('User deletes single wish list from /wishlist page', async ({ page, baseURL }) => {
+
+    // Add a product to the wishlist and generate a share token
+    await addProductToWishlist(page, { baseURL });
+
+    // Wait for and assert the new button state
+    await assertRemoveFromWishlistVisible(page);
+
+    // Assert the share token is set in localStorage
+    const shareToken = await getShareTokenFromStorage(page);
+    expect(shareToken).not.toBeNull();
+
+    // Navigate to the /wishlist page
+    await page.goto(`${baseURL}/wishlist/`);
+
+    // Delete the wishlist by clicking the delete list (all) button
+    await clickButton(page, 'Delete List (ALL)');
+
+    // Listen for the delete API response, capture and assert the response body
+    const responseBody = await captureApiResponse(page, '/wp-json/tm-wishlist/v1/lists/', 'DELETE');
+
+    // Check that data is null in the response which indicates the list was deleted
+    expect(responseBody.data).toBeNull();
+
+    // Wait for the compare list wrapper to be removed from the page
+    await expect(page.locator('.tm-compare-list-wrapper')).toHaveCount(0);
+
+    // Check entry content, should only contain "Your wishlist is empty. To start, view our products pages."
+    const emptyMessage = await page.locator('.entry-content').innerText();
+    expect(emptyMessage).toBe('Your wishlist is empty. To start, view our products pages.');
+
+}); 

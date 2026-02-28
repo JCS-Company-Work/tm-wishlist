@@ -1,5 +1,6 @@
 // @ts-check
 /** @type {import('@playwright/test').PlaywrightTestConfig} */
+require('dotenv').config(); // Only needed if not already loaded
 const config = {
   testDir: './tests/playwright',
   timeout: 30000,
@@ -10,7 +11,7 @@ const config = {
     ignoreHTTPSErrors: true,
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    baseURL: 'http://localhost',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost',
   },
 };
 

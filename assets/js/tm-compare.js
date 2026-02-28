@@ -607,8 +607,16 @@ class TMCompare {
 
             } else if(data.data === null) {
 
+                // Check if the share_token in the response is in the current URL if it is this is a single
+                // wishlist page and the list has been deleted so show the empty message and remove control buttons
+                if (window.location.href.includes(shareToken)) {
+                    document.querySelector('.active-list-controls').remove();
+                }
+
                 // If data is null, it means the list was deleted, so remove the entire wrapper
                 wrapper.remove();
+
+                document.querySelector('.entry-content').innerHTML = '<p>Your wishlist is empty. To start, view our products pages.</p>';
 
             } else if (data.data) {
 
