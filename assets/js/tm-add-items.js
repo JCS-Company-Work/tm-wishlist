@@ -263,7 +263,7 @@ class TMAddItems {
   updateExistingList(userToken, shareToken, configs) {
 
     const allUserLists = getAllListsForUser(userToken, this.STORAGE_KEY);
-console.log('user lists before update:', allUserLists);
+
     // Update only the active list for this user
     allUserLists[userToken][shareToken] = configs;
 
@@ -349,7 +349,15 @@ console.log('user lists before update:', allUserLists);
 
     // Use user token from cookie
     const userToken = getCookie('tm_wishlist_user_token');
-    if (!this.SYNC_GET_URL || !userToken) return;
+
+    // If no sync URL or user token, clear local storage and exit
+    if (!this.SYNC_GET_URL || !userToken) {
+
+      // Attempt to recover user token, if not clear storage to avoid stale data
+      await this.recoverUserToken();
+      
+      return;
+    }
 
     // Construct URL for user lists
     const url = `${this.SYNC_GET_URL}?user_token=${encodeURIComponent(userToken)}`;
@@ -365,7 +373,7 @@ console.log('user lists before update:', allUserLists);
         const data = await res.json();
 
         // If server returns no data, clear local wishlist
-        if (data && Array.isArray(data.data) && data.data.length === 0) {
+        if (data && Array.isArray(data.lists) && data.lists.length === 0) {
             clearWishlistStorage();
             return;
         }
@@ -409,6 +417,72 @@ console.log('user lists before update:', allUserLists);
         console.warn('Could not seed compare list from server', err);
     }
 
+  }
+
+  /**
+   * Attempt to recover or set user token if possible.
+   * - If configs exist, assume user token is present.
+   * - If only share token exists, attempt to fetch user token from backend (not implemented here, placeholder for extension).
+   */
+  async recoverUserToken() {
+
+    // Get user token from cookies and share token from local storage
+    const configs = localStorage.getItem(this.STORAGE_KEY);
+    const shareToken = localStorage.getItem('tm_wishlist_share_token');
+
+    if (configs) {
+      // Attempt recovery with configs first as user token is part of data structure
+      const parsedConfigs = JSON.parse(configs);
+      const userToken = Object.keys(parsedConfigs)[0];
+
+      // If user token is found in configs, set it in cookies
+      if (userToken) {
+        document.cookie = `tm_wishlist_user_token=${userToken}; path=/; SameSite=Lax; max-age=31536000`;
+
+        // Check if current page config is in the user's wishlist and update button state
+        const button = document.querySelector('.tm-add-to-compare');
+        if (button) {
+          const productId = this.getProductId(button);
+          const savedConfigs = parsedConfigs[userToken] ? Object.values(parsedConfigs[userToken]).flat() : [];
+          const currentConfig = this.getCurrentProductConfig();
+          const matchIndex = this.findMatchingConfigIndex(savedConfigs, currentConfig, productId);
+          this.setButtonState(button, matchIndex !== -1);
+        }
+        return;
+      }
+    } else if (shareToken) {
+      // If only share token exists, attempt to recover user token from backend using the share token
+      fetch(`/wp-json/tm-wishlist/v1/lists/${shareToken}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data && data.user_token) {
+          // Set user token in cookies
+          document.cookie = `tm_wishlist_user_token=${data.user_token}; path=/; SameSite=Lax; max-age=31536000`;
+          // Check if current page config is in the user's wishlist and update button state
+          const button = document.querySelector('.tm-add-to-compare');
+          if (button && data.data) {
+            const productId = this.getProductId(button);
+            const savedConfigs = Object.values(data.data).flat();
+            const currentConfig = this.getCurrentProductConfig();
+            const matchIndex = this.findMatchingConfigIndex(savedConfigs, currentConfig, productId);
+            this.setButtonState(button, matchIndex !== -1);
+          }
+          // Seed data from server now that we have the user token
+          this.seedFromServer();
+        }
+      })
+      .catch(err => {
+        console.warn('Failed to recover user token using share token:', err);
+      });
+    } else {
+      // If no data exists, clear storage to avoid stale data
+      clearWishlistStorage();
+    }
   }
 
   /************ DOM Extraction ************/

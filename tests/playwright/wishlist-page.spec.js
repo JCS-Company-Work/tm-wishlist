@@ -20,6 +20,7 @@ test('User renames their only wishlist from the wishlist page', async ({ page, b
     // Go to the wishlist page
     await page.goto(`${baseURL}/wishlist/`);
 
+    // Click the "Edit list name" button to enable the wishlist name input
     await clickButton(page, 'Edit list name');
 
     // Locate wishlist name input
@@ -55,7 +56,7 @@ test('User deletes single wish list from /wishlist page', async ({ page, baseURL
     // Assert the share token is set in localStorage
     const shareToken = await getShareTokenFromStorage(page);
     expect(shareToken).not.toBeNull();
-
+console.log(shareToken);
     // Navigate to the /wishlist page
     await page.goto(`${baseURL}/wishlist/`);
 
@@ -74,5 +75,8 @@ test('User deletes single wish list from /wishlist page', async ({ page, baseURL
     // Check entry content, should only contain "Your wishlist is empty. To start, view our products pages."
     const emptyMessage = await page.locator('.entry-content').innerText();
     expect(emptyMessage).toBe('Your wishlist is empty. To start, view our products pages.');
+
+    // Check data has been removed from localStorage object strucure
+
 
 }); 

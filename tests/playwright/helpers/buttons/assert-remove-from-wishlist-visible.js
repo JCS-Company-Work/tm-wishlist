@@ -8,5 +8,5 @@ export async function assertRemoveFromWishlistVisible(page) {
     const removeButton = page.getByRole('button', { name: 'Remove from wishlist' });
     await removeButton.waitFor({ state: 'visible' });
     await expect(removeButton).toHaveText('Remove from wishlist');
-
+    return removeButton;
 }

@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { clickButton } from './helpers/buttons/click-button.js';
+import { assertRemoveFromWishlistVisible } from './helpers/buttons/assert-remove-from-wishlist-visible.js';
 
 test('User with only one wishlist visits the wishlist page: shows empty message', async ({ page }) => {
 
@@ -16,6 +18,57 @@ test('User with only one wishlist visits the wishlist page: shows empty message'
 
 });
 
+test('Check add/remove button state change on click from product page', async ({ page }) => {
+
+    // Go to a product page
+    await page.goto('https://tm-store-jan-26.local/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox');
+
+    // Clear local storage to ensure the user has no existing wishlist data
+    await page.evaluate(() => localStorage.clear());
+
+    // Click the "Add to wishlist" button
+    const addButton = await clickButton(page, 'Add to wishlist');
+
+    // Wait for and assert the new button state
+    const removeButton = await assertRemoveFromWishlistVisible(page);
+
+    // Wait for button
+    await removeButton.waitFor({ state: 'visible' });
+
+    // Click the "Remove from wishlist" button
+    await removeButton.click();
+
+    // Wait for and assert the button state has changed back to "Add to wishlist"
+    await addButton.waitFor({ state: 'visible' });
+    await expect(addButton).toHaveText('Add to wishlist');
+
+});
+
+test('Check add/remove button state on page load with existing wishlist item', async ({ page }) => {
+
+    // Go to a product page
+    await page.goto('https://tm-store-jan-26.local/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox');
+
+    // Clear local storage to ensure the user has no existing wishlist data
+    await page.evaluate(() => localStorage.clear());
+
+    // Click the "Add to wishlist" button
+    await clickButton(page, 'Add to wishlist');
+
+    // Wait for and assert the new button state
+    await assertRemoveFromWishlistVisible(page);
+
+    // Wait until wishlist configs are properly saved in local storage
+    await page.waitForFunction(() => localStorage.getItem('tm_wishlist_configs') !== null);
+
+    // Reload the page
+    await page.reload();
+
+    // Assert that the "Remove from wishlist" button is still visible after page reload
+    await assertRemoveFromWishlistVisible(page);
+
+});
+
 test('User adds an item to their only wishlist from fresh, no user token or share token present', async ({ page }) => {
 
     // Go to a product page
@@ -25,14 +78,10 @@ test('User adds an item to their only wishlist from fresh, no user token or shar
     await page.evaluate(() => localStorage.clear());
 
     // Click the "Add to wishlist" button
-    const addButton = page.getByRole('button', { name: 'Add to wishlist' });
-
-    // Wait for and click the add to wishlist button
-    await addButton.waitFor({ state: 'visible' });
-    await addButton.click();
+    await clickButton(page, 'Add to wishlist');
 
     // Wait for and assert the new button state
-    const removeButton = page.getByRole('button', { name: 'Remove from wishlist' });
+    const removeButton = await assertRemoveFromWishlistVisible(page);
 
     // Wait for button
     await removeButton.waitFor({ state: 'visible' });

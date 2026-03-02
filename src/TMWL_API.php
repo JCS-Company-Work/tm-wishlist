@@ -362,6 +362,7 @@
 
             // Return data with share token and edit permission flag
             return rest_ensure_response([
+                'user_token' => $row->user_token,
                 'share_token' => $row->share_token,
                 'data'        => $data ?: [],
                 'edit_allowed' => $edit_allowed,

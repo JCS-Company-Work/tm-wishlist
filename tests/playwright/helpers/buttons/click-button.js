@@ -10,4 +10,7 @@ export async function clickButton(page, buttonName) {
     await button.waitFor({ state: 'visible' });
     await button.click();
 
+    // Return the button element for further assertions if needed
+    return button;
+
 }
