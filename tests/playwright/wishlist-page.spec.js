@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { addProductToWishlist } from './helpers/product/add-product-to-wishlist.js';
 import { assertRemoveFromWishlistVisible } from './helpers/buttons/assert-remove-from-wishlist-visible.js';
+import { waitForConfigsInStorage } from './helpers/storage/wait-for-configs-in-storage.js';
 import { getShareTokenFromStorage } from './helpers/storage/get-share-token-from-storage.js';
 import { getProductConfigsFromStorage } from './helpers/storage/get-product-configs-from-storage.js';
 import { clickButton } from './helpers/buttons/click-button.js';
@@ -10,6 +11,9 @@ test('User creates new list from wishlist page', async ({ page, baseURL }) => {
     
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL, productUrl: '/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox' });
+
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
 
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);
@@ -39,7 +43,6 @@ test('User creates new list from wishlist page', async ({ page, baseURL }) => {
     // Get all h3 elements within tm-compare-list-wrapper and extract their text
     const headingElements = await page.$$('.tm-compare-list-wrapper h3');
     const headingTexts = await Promise.all(headingElements.map(async h => (await h.innerText()).trim()));
-    console.log('Headings:', headingTexts);
 
     // Check uniqueness
     const uniqueHeadings = new Set(headingTexts);
@@ -97,14 +100,21 @@ test('User renames their only wishlist from the wishlist page', async ({ page, b
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL, productUrl: '/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox' });
 
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
+
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);
 
-    // Assert the wishlist configs are set in localStorage so that edit button is visible on the wishlist page
-    await getProductConfigsFromStorage(page);
+    // Assert the share token is set in localStorage
+    const shareToken = await getShareTokenFromStorage(page);
+    expect(shareToken).not.toBeNull();
 
-    // Go to the wishlist page
-    await page.goto(`${baseURL}/wishlist/`);
+    // Navigate to the wishlist page for this share token
+    await page.goto(`${baseURL}/wishlist/share/${shareToken}`);
+
+    // Click Manage Lists button to open the list management interface on the wishlist page
+    await clickButton(page, 'Manage Lists');
 
     // Click the "Edit list name" button to enable the wishlist name input
     await clickButton(page, 'Edit list name');
@@ -135,6 +145,9 @@ test('User deletes single wish list from /wishlist page', async ({ page, baseURL
 
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL });
+
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
 
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);
@@ -169,6 +182,9 @@ test('User deletes single list for me from /wishlist page', async ({ page, baseU
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL });
 
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
+
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);
 
@@ -176,7 +192,7 @@ test('User deletes single list for me from /wishlist page', async ({ page, baseU
     const shareToken = await getShareTokenFromStorage(page);
     expect(shareToken).not.toBeNull();
 
-     // Navigate to the wishlist page for this share token
+    // Navigate to the wishlist page for this share token
     await page.goto(`${baseURL}/wishlist/share/${shareToken}`);
 
     // Click Manage Lists button to open the list management interface on the wishlist page
@@ -204,6 +220,9 @@ test('User deletes single list for me from /wishlist page with multiple lists pr
 
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL });
+
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
 
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);

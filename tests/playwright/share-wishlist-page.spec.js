@@ -1,17 +1,22 @@
 import { test, expect } from '@playwright/test';
 import { addProductToWishlist } from './helpers/product/add-product-to-wishlist.js';
 import { assertRemoveFromWishlistVisible } from './helpers/buttons/assert-remove-from-wishlist-visible.js';
+import { waitForConfigsInStorage } from './helpers/storage/wait-for-configs-in-storage.js';
 import { getShareTokenFromStorage } from './helpers/storage/get-share-token-from-storage.js';
+import { getProductConfigsFromStorage } from './helpers/storage/get-product-configs-from-storage.js';
 import { clickButton } from './helpers/buttons/click-button.js';
 import { captureApiResponse } from './helpers/api/capture-api-response.js';
 
 test('User uses wishlist links after adding item', async ({ page, baseURL }) => {
-    
+
     // Go to the product page
     await page.goto(`${baseURL}/product/tavolo-mezzaluna-colonna/`);
 
     // Use the helper to add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL });
+
+    // Wait for configs to be present before asserting button
+    await page.waitForFunction(() => localStorage.getItem('tm_wishlist_configs') !== null);
 
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);
@@ -47,6 +52,9 @@ test('User creates new wish list from wishlist/share page', async ({ page, baseU
 
     // Use the helper to add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL });
+
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
 
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);
@@ -101,12 +109,11 @@ test('User deletes only wish list from wishlist/share page', async ({ page, base
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL });
 
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
+
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);
-
-    // Debug: log share token from localStorage before helper
-    const rawShareToken = await page.evaluate(() => localStorage.getItem('tm_wishlist_share_token'));
-    console.log('Raw share token from localStorage (delete list for me test):', rawShareToken);
 
     // Assert the share token is set in localStorage
     const shareToken = await getShareTokenFromStorage(page);
@@ -139,14 +146,10 @@ test('User clears wishlist', async ({ page, baseURL }) => {
     await addProductToWishlist(page, { baseURL });
 
     // Wait for configs to be present before asserting button
-    await page.waitForFunction(() => localStorage.getItem('tm_wishlist_configs') !== null);
+    await waitForConfigsInStorage(page);
 
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);
-
-    // Debug: log share token from localStorage before helper
-    const rawShareToken = await page.evaluate(() => localStorage.getItem('tm_wishlist_share_token'));
-    console.log('Raw share token from localStorage (clear wishlist test):', rawShareToken);
 
     // Assert the share token is set in localStorage
     const shareToken = await getShareTokenFromStorage(page);
@@ -177,6 +180,9 @@ test ('User deletes only item from wishlist', async ({ page, baseURL }) => {
 
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL });
+
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
 
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);
@@ -213,6 +219,9 @@ test('User deletes list for me', async ({ page, baseURL }) => {
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL });
 
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
+
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);
 
@@ -239,12 +248,26 @@ test('User deletes list for me', async ({ page, baseURL }) => {
     const emptyMessage = await page.locator('.entry-content').innerText();
     expect(emptyMessage).toBe('Your wishlist is empty. To start, view our products pages.');
 
-    // Assert that the share token and configs have been removed from localStorage
+    // Assert that the share token has been removed from localStorage
     const shareTokenAfter = await page.evaluate(() => localStorage.getItem('tm_wishlist_share_token'));
     expect(shareTokenAfter).toBeNull();
 
-    const configs = await page.evaluate(() => localStorage.getItem('tm_wishlist_configs'));
-    expect(configs).toBeNull();
+    // Get user token from cookie for assertion
+    const userToken = await page.evaluate(() => {
+        const match = document.cookie.match(/(?:^|; )tm_wishlist_user_token=([^;]*)/);
+        return match ? match[1] : null;
+    });
+
+    // Get configs from localStorage 
+    const configs = await getProductConfigsFromStorage(page);
+    
+    // Assert that the configs for this user and share token have been removed from localStorage (should be undefined), 
+    // but other users' configs are unaffected
+    if (configs[userToken]) {
+        expect(configs[userToken]?.[shareToken]).toBeUndefined();
+    } else {
+        expect(configs).toBeNull();
+    }
 
     // Visit product page and assert that share token has been removed from wishlist links
     await page.goto(`${baseURL}/product/tavolo-mezzaluna-colonna/`);
@@ -269,6 +292,9 @@ test('User visits share wishlist link but is not the owner', async ({ browser, b
     // Use the helper to add a product to the wishlist and generate a share token
     await addProductToWishlist(ownerPage, { baseURL });
     
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(ownerPage);
+
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(ownerPage);
     
@@ -315,6 +341,9 @@ test('Manage lists button only visible to owner on share page', async ({ page, b
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL });
 
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
+
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);
 
@@ -342,6 +371,9 @@ test('Share button contains correct url with share token', async ({ page, baseUR
 
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL });
+
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
 
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);

@@ -1,14 +1,16 @@
 import { test, expect } from '@playwright/test';
+import { clearTestState } from './helpers/test/clear-state.js';
 import { clickButton } from './helpers/buttons/click-button.js';
 import { assertRemoveFromWishlistVisible } from './helpers/buttons/assert-remove-from-wishlist-visible.js';
+import { waitForConfigsInStorage } from './helpers/storage/wait-for-configs-in-storage.js';
 
 test('User with only one wishlist visits the wishlist page: shows empty message', async ({ page }) => {
 
     // Go to the wishlist page
     await page.goto('https://tm-store-jan-26.local/wishlist');
 
-    // Clear local storage to ensure the user has no existing wishlist data
-    await page.evaluate(() => localStorage.clear());
+    // Clear test state before starting
+    await clearTestState(page);
 
     // Text to match on page for empty wishlist message
     const emptyMessage = page.locator('text=Your wishlist is empty. To start, view our products pages.');
@@ -22,12 +24,18 @@ test('Check add/remove button state change on click from product page', async ({
 
     // Go to a product page
     await page.goto('https://tm-store-jan-26.local/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox');
+    
+    // Clear test state before starting
+    await clearTestState(page);
 
     // Clear local storage to ensure the user has no existing wishlist data
     await page.evaluate(() => localStorage.clear());
 
     // Click the "Add to wishlist" button
     const addButton = await clickButton(page, 'Add to wishlist');
+
+    // Wait until wishlist configs are properly saved in local storage
+    await waitForConfigsInStorage(page);
 
     // Wait for and assert the new button state
     const removeButton = await assertRemoveFromWishlistVisible(page);
@@ -49,17 +57,17 @@ test('Check add/remove button state on page load with existing wishlist item', a
     // Go to a product page
     await page.goto('https://tm-store-jan-26.local/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox');
 
-    // Clear local storage to ensure the user has no existing wishlist data
-    await page.evaluate(() => localStorage.clear());
+    // Clear test state before starting
+    await clearTestState(page);
 
     // Click the "Add to wishlist" button
     await clickButton(page, 'Add to wishlist');
 
+    // Wait until wishlist configs are properly saved in local storage
+    await waitForConfigsInStorage(page);
+
     // Wait for and assert the new button state
     await assertRemoveFromWishlistVisible(page);
-
-    // Wait until wishlist configs are properly saved in local storage
-    await page.waitForFunction(() => localStorage.getItem('tm_wishlist_configs') !== null);
 
     // Reload the page
     await page.reload();
@@ -74,11 +82,14 @@ test('User adds an item to their only wishlist from fresh, no user token or shar
     // Go to a product page
     await page.goto('https://tm-store-jan-26.local/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox');
 
-    // Clear local storage to ensure the user has no existing wishlist data
-    await page.evaluate(() => localStorage.clear());
+    // Clear test state before starting
+    await clearTestState(page);
 
     // Click the "Add to wishlist" button
     await clickButton(page, 'Add to wishlist');
+
+    // Wait until wishlist configs are properly saved in local storage
+    await waitForConfigsInStorage(page);
 
     // Wait for and assert the new button state
     const removeButton = await assertRemoveFromWishlistVisible(page);
@@ -123,21 +134,22 @@ test ('Test token recovery if cookies/share token missing', async ({ page }) => 
             const match = document.cookie.match(/tm_wishlist_user_token=([^;]+)/);
             return match ? match[1] : null;
         });
-        console.log(`${step} user token:`, userToken);
+        //console.log(`${step} user token:`, userToken);
     }
 
     // Go to a product page
     await page.goto('https://tm-store-jan-26.local/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox');
 
-    // Clear local storage to ensure the user has no existing wishlist data
-    await page.evaluate(() => localStorage.clear());
+    // Clear test state before starting
+    await clearTestState(page);
 
     // Click the "Add to wishlist" button
     await clickButton(page, 'Add to wishlist');
 
     // Wait for configs to be present before asserting button
-    await page.waitForFunction(() => localStorage.getItem('tm_wishlist_configs') !== null);
+    await waitForConfigsInStorage(page);
 
+    // Log the user token after adding to wishlist
     await logUserToken('Initial');
 
     // Wait for and assert the new button state

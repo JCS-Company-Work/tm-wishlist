@@ -338,9 +338,12 @@ class TMCompare {
                         // Set share token in localStorage for potential use in share page
                         localStorage.setItem('tm_wishlist_share_token', shareToken);
 
+                        // Set share token in cookie for server-side access to update active title
+                        document.cookie = 'tm_wishlist_share_token=' + shareToken + '; path=/';
+
                         // Remove active class from all icons and toggle buttons
                         document.querySelectorAll('.list-active').forEach(el => el.classList.remove('selected'));
-                        //document.querySelectorAll('.list-toggle').forEach(el => el.classList.remove('active'));
+
                         document.querySelectorAll('.tm-compare-list-wrapper').forEach(el => el.classList.remove('active'));
                         
                         // Add active class to the clicked icon's wrapper and toggle button
@@ -388,6 +391,14 @@ class TMCompare {
             
             // Save the updated lists back to localStorage
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
+
+            // Remove share token from storage
+            localStorage.removeItem('tm_wishlist_share_token');
+
+            // Remove share token cookie if it matches the deleted list's share token to prevent stale cookie
+            if (document.cookie.includes(`tm_wishlist_share_token=${shareToken}`)) {
+                document.cookie = 'tm_wishlist_share_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            }
 
         }
 

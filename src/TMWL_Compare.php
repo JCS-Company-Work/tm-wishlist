@@ -353,7 +353,7 @@
          */
         public function activeWishlistControls($type, $active_list_name) {
 
-            
+            var_dump($active_list_name);
             $active_list_html = !empty($active_list_name)
                 ? '<p class="active-list-name">Active Wishlist: </p><span class="active-list-span button">' . esc_html($active_list_name) . '</span>'
                 : '';
