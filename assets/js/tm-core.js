@@ -62,7 +62,7 @@ const getAllListsForUser = (userToken, storageKey) => {
  * Clear all wishlist-related data from local storage
  */
 const clearWishlistStorage = () => {
-
+console.log('Clearing wishlist data from localStorage');
   localStorage.removeItem('tm_wishlist_configs');
   localStorage.removeItem('tm_wishlist_share_token');
 

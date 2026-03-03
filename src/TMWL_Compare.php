@@ -5,6 +5,9 @@
     use TMWishlist\TMWL_DB;
 
     class TMWL_Compare {
+
+        // Variable to hold empty message for reuse
+        private $empty_message = '<p>Your wishlist is empty. To start, view our products pages.</p>';
         
         public function __construct() {
 
@@ -93,7 +96,7 @@
 
             // If no row or no data, return message
             if ( ! $row || empty( $row['data'] ) ) {
-                return '<p>Your wishlist is empty.</p>';
+                return $this->empty_message;
             }
 
             // Return row
@@ -126,7 +129,7 @@
 
                 // If no data, return message
                 if ( empty($data) ) {
-                    return '<p>Your wishlist is empty. To start, view our products pages.</p>';
+                    return $this->empty_message;
                 }
 
                 // Output buffer for rendering lists
@@ -156,7 +159,7 @@
                     // If no items in this list, show message, close wrapper, and skip to next list
                     if (empty($products) || !is_array($products)) {
                         echo '<div class="tm-compare-list tm-compare-list-multi">';
-                        echo '<p>Your wishlist is empty. To start, view our products pages.</p>';
+                        echo $this->empty_message;
                         echo '</div>'; // Close .tm-compare-list-multi
                         echo '</div>'; // Close .tm-compare-list-wrapper
                         continue;
@@ -223,7 +226,7 @@
 
             } else {
 
-                return '<p>Your wishlist is empty. To start, view our products pages.</p>';
+                return $this->empty_message;
 
             }
         }
@@ -235,7 +238,7 @@
 
             // Early return if no share token
             if ( empty( $share_token_param ) ) {
-                return '<p>Your wishlist is empty. To start, view our products pages.</p>';
+                return $this->empty_message;
             }
 
             // Fetch comparison data based on share token
@@ -243,7 +246,7 @@
 
             // Early return if no data
             if ( ! $row || empty( $row['data'] ) ) {
-                return '<p>Your wishlist is empty. To start, view our products pages.</p>';
+                return $this->empty_message;
             }
 
             // Decode product data
@@ -251,7 +254,7 @@
 
             // Early return if no products
             if ( ! is_array( $products ) || empty( $products ) ) {
-                return '<p>Your wishlist is empty. To start, view our products pages.</p>';
+                return $this->empty_message;
             }
 
             // Render comparison table

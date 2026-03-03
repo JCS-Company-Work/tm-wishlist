@@ -304,6 +304,7 @@
             // Prepare response with share URL and user token
             $result = [
                 'success' => true,
+                'data' => $incoming_data,
                 'share_token' => $share_token,
                 'user_token' => $incoming_user_token,
                 'share_url' => trailingslashit( home_url( 'wishlist' ) ) . 'share/' . rawurlencode( $share_token ) . '/',
@@ -546,11 +547,17 @@
                 [ '%s', '%s' ]
             );
 
-            // Return success response
+            // Fetch the updated row
+            $updated_row = $wpdb->get_row(
+                $wpdb->prepare("SELECT * FROM {$table_name} WHERE share_token = %s LIMIT 1", $share_token)
+            );
+
+            // Return success response with updated row data and type
             return rest_ensure_response([
                 'success' => true,
+                'type' => 'list cleared for user',
                 'share_token' => $share_token,
-                'user_token' => $user_token,
+                'user_token' => $updated_row ? $updated_row->user_token : null,
                 'data' => null,
             ]);
 

@@ -18,6 +18,9 @@ class TMCompare {
         this.SYNC_URL = window.TMWLSettings?.rest_save_url || null;
         this.nonce = window.TMWLSettings?.nonce || null;
 
+        // Empty wishlist message for reuse
+        this.EMPTY_MESSAGE = '<p>Your wishlist is empty. To start, view our products pages.</p>';
+
         // Initialize properties
         this.init();
 
@@ -487,7 +490,7 @@ class TMCompare {
                 listContainer.classList.remove('tm-compare-grid');
 
                 // Show empty message
-                listContainer.innerHTML = '<p>Your wishlist is empty. You can add products to your wishlist from the product pages.</p>';
+                listContainer.innerHTML = this.EMPTY_MESSAGE;
 
             }
         }
@@ -510,7 +513,7 @@ class TMCompare {
         // Show empty message
         if (container) {
             container.classList.remove('tm-compare-grid');
-            container.innerHTML = '<p>Wishlist empty, visit product pages to add items.</p>';
+            container.innerHTML = this.EMPTY_MESSAGE;
         }
 
     }
@@ -599,11 +602,28 @@ class TMCompare {
 
             // Find the corresponding compare list wrapper using share token
             const wrapper = document.querySelector(`.tm-compare-list-wrapper[data-share-token="${shareToken}"]`);
+            
+            if (data.success && data.type === 'list cleared for user') {
 
-            if (Array.isArray(data.data) && data.data.length === 0) {
-                
+                // Clear the list in localStorage so user starts with a fresh list if they add new items
+                clearWishlistStorage();
+
+                // If data is null, it means the list was deleted, so remove the entire wrapper
+                wrapper.remove();
+
+                // Show empty message in the main content
+                document.querySelector('.entry-content').innerHTML = this.EMPTY_MESSAGE;
+
+            } else if (Array.isArray(data.data) && data.data.length === 0) {
+
                 // If returned data is empty show empty message
-                wrapper.querySelector('.tm-compare-list').innerHTML = '<p>Your wishlist is empty.</p>';
+                const listContainer = wrapper.querySelector('.tm-compare-list');
+
+                // Remove grid from list container
+                listContainer.classList.remove('tm-compare-grid');
+
+                // Display empty message
+                listContainer.innerHTML = this.EMPTY_MESSAGE;
 
             } else if(data.data === null) {
 
@@ -616,7 +636,7 @@ class TMCompare {
                 // If data is null, it means the list was deleted, so remove the entire wrapper
                 wrapper.remove();
 
-                document.querySelector('.entry-content').innerHTML = '<p>Your wishlist is empty. To start, view our products pages.</p>';
+                document.querySelector('.entry-content').innerHTML = this.EMPTY_MESSAGE;
 
             } else if (data.data) {
 

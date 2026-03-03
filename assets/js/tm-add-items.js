@@ -112,33 +112,50 @@ class TMAddItems {
 
     // Function to update button state
     const updateButtonState = () => {
-
-      // Get saved configs
       const savedConfigs = getSavedConfigs();
-      const currentConfig = this.getCurrentProductConfig();
-      const matchIndex = this.findMatchingConfigIndex(savedConfigs, currentConfig, productId);
-
-      // Update button state based on match
-      this.setButtonState(button, matchIndex !== -1);
-
+      this.updateButtonState(button, savedConfigs);
     };
 
     //Set initial state once DOM has applied any changes (two rAFs to ensure styles applied)
-    requestAnimationFrame(() => requestAnimationFrame(updateButtonState))
+    requestAnimationFrame(() => requestAnimationFrame(updateButtonState));
 
     // Update state whenever selections change
     layerInputs.forEach(input => {
-
       input.addEventListener('change', () => {
         requestAnimationFrame(updateButtonState);
       });
-
     });
 
   }
 
   /**
-   * 
+   * Update the add/remove button state based on current config and saved configs.
+   * @param {HTMLElement} button
+   * @param {Array} savedConfigs
+   */
+  updateButtonState(button, savedConfigs) {
+
+    // Ensure button is valid
+    if (!button) return;
+    
+    // Get product ID
+    const productId = this.getProductId(button);
+    
+    // Ensure product ID is present
+    if (!productId) return;
+
+    // Get current product config
+    const currentConfig = this.getCurrentProductConfig();
+    
+    // Find if current config matches any saved config for this product
+    const matchIndex = this.findMatchingConfigIndex(savedConfigs, currentConfig, productId);
+    
+    // Set button state to "added" if a match is found, otherwise "not added"
+    this.setButtonState(button, matchIndex !== -1);
+
+  }
+
+  /**
    * Set the button state to added or not added.
    * 
    * @param {HTMLElement} button 
@@ -182,7 +199,6 @@ class TMAddItems {
 
     // Get share token from local storage
     let shareToken = localStorage.getItem('tm_wishlist_share_token') ?? null;
-    console.log('share token:', shareToken);
 
     if (shareToken) {
 
@@ -243,11 +259,18 @@ class TMAddItems {
           if (!allUserLists[userToken]) {
             allUserLists[userToken] = {};
           }
+
           // Set new share token list to current configs
           allUserLists[userToken][newShareToken] = configs;
+
           // Save back to localStorage
           localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
+
+          // Update view wishlist button and /wishlist menu item links
+          updateWishlistLinks();
+
           return newShareToken;
+
         }
         return null;
       });
@@ -439,14 +462,11 @@ class TMAddItems {
       if (userToken) {
         document.cookie = `tm_wishlist_user_token=${userToken}; path=/; SameSite=Lax; max-age=31536000`;
 
-        // Check if current page config is in the user's wishlist and update button state
+        // Update button state using refactored method
         const button = document.querySelector('.tm-add-to-compare');
         if (button) {
-          const productId = this.getProductId(button);
           const savedConfigs = parsedConfigs[userToken] ? Object.values(parsedConfigs[userToken]).flat() : [];
-          const currentConfig = this.getCurrentProductConfig();
-          const matchIndex = this.findMatchingConfigIndex(savedConfigs, currentConfig, productId);
-          this.setButtonState(button, matchIndex !== -1);
+          this.updateButtonState(button, savedConfigs);
         }
         return;
       }
@@ -463,14 +483,11 @@ class TMAddItems {
         if (data && data.user_token) {
           // Set user token in cookies
           document.cookie = `tm_wishlist_user_token=${data.user_token}; path=/; SameSite=Lax; max-age=31536000`;
-          // Check if current page config is in the user's wishlist and update button state
+          // Update button state using refactored method
           const button = document.querySelector('.tm-add-to-compare');
           if (button && data.data) {
-            const productId = this.getProductId(button);
             const savedConfigs = Object.values(data.data).flat();
-            const currentConfig = this.getCurrentProductConfig();
-            const matchIndex = this.findMatchingConfigIndex(savedConfigs, currentConfig, productId);
-            this.setButtonState(button, matchIndex !== -1);
+            this.updateButtonState(button, savedConfigs);
           }
           // Seed data from server now that we have the user token
           this.seedFromServer();
