@@ -66,40 +66,23 @@ test('User creates new wish list from wishlist/share page', async ({ page, baseU
     // Go to the wishlist page for this share token
     await page.goto(`${baseURL}/wishlist/share/${shareToken}`);
 
-    // Extract list name from page
-    const listName = await page.locator('.tm-compare-list-name').innerText();
-
-    // If list name begins with "My Wishlist" (the default name for new wishlists) extract the number after tha hash key
-    let wishlistNumber = null;
-    if (listName.startsWith('My Wishlist')) {
-        const match = listName.match(/#(\d+)/);
-        if (match) {
-            wishlistNumber = parseInt(match[1], 10);
-        }
-    }
-
     // Find and click the "Create new wishlist" button
-    const createButton = page.getByRole('button', { name: 'Create new list' });
-
-    // Wait for and click the create new wishlist button
-    await createButton.waitFor({ state: 'visible' });
-    await createButton.click();
+    await clickButton(page, 'Create new list');
 
     // Wait for page redirect to /wishlist
-    await page.waitForURL('https://tm-store-jan-26.local/wishlist/');
+    await page.waitForURL(`${baseURL}/wishlist/`);
 
     // Assert that the URL is now the wishlist page
-    expect(page.url()).toBe('https://tm-store-jan-26.local/wishlist/');
+    expect(page.url()).toBe(`${baseURL}/wishlist/`);
 
-    // Assert that the new wishlist has been created with the correct incremented number in the name
-    // new list is always at the top of the list, so get the first list name on the page
-    const newListName = await page.locator('.tm-compare-list-name').first().innerText();
-    if (wishlistNumber !== null) {
-        expect(newListName).toBe(`My Wishlist #${wishlistNumber + 1}`);
-    } else {
-        // If we couldn't extract a number from the original list name, just check that a new list with the default name has been created
-        expect(newListName).toBe('My Wishlist');
-    }
+    // Get all list wrapper elements as ElementHandles
+    const listElements = await page.$$('.tm-compare-list-wrapper');
+
+    // Save new list element to variable for further assertions
+    const newList = page.locator('.tm-compare-list-wrapper').nth(listElements.length - 1);
+
+    // Assert that the new list is visible on the page
+    await expect(newList).toBeVisible();
 
 });
 

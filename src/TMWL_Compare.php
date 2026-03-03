@@ -108,35 +108,36 @@
 
             // Check for user token in cookie
             if ( isset($_COOKIE['tm_wishlist_user_token']) && !empty($_COOKIE['tm_wishlist_user_token']) ) {
-
-                // Fetch user token from cookie
+                
+                global $wpdb;
+                
+                // Sanitize user token from cookie
                 $user_token = sanitize_text_field($_COOKIE['tm_wishlist_user_token']);
+                
+                // Set table name
+                $table_name = TMWL_DB::get_table_name();
+                
+                // Fetch all lists for this user
+                $sql = $wpdb->prepare("SELECT * FROM $table_name WHERE user_token = %s", $user_token);
+                $lists = $wpdb->get_results($sql, ARRAY_A);
 
-                // Build API URL with user token as query parameter
-                $api_url = rest_url('tm-wishlist/v1/lists?user_token=' . urlencode($user_token));
-
-                // Make API request to fetch user's wishlists
-                $response = wp_remote_get($api_url);
-            
-                // Check for errors
-                if ( is_wp_error($response) ) {
-                    return '<p>Could not fetch your wishlists. Please try again later.</p>';
-                }
-
-                // Parse response and return data
-                $body = wp_remote_retrieve_body($response);
-                $data = json_decode($body, true);
-
-                // If no data, return message
-                if ( empty($data) ) {
+                // If no lists, return message
+                if (empty($lists)) {
                     return $this->empty_message;
                 }
 
                 // Output buffer for rendering lists
                 ob_start();
 
+                // Prepare lists for rendering (decode data)
+                $render_lists = [];
+                foreach ($lists as $list) {
+                    $list['data'] = !empty($list['data']) ? json_decode($list['data'], true) : [];
+                    $render_lists[] = $list;
+                }
+
                 // Determine active list based on cookie and available lists
-                $active_list_name = $this->determineActiveList($data['lists']);
+                $active_list_name = $this->determineActiveList($render_lists);
 
                 // Render active list controls with active list name
                 echo $this->activeWishlistControls('multi-list', $active_list_name);
@@ -144,11 +145,8 @@
                 echo '<div class="tm-wishlist-lists">';
 
                 // Loop through lists and render each one
-                foreach ($data['lists'] as $list) {
-
-                    // Validate products data
+                foreach ($render_lists as $list) {
                     $products = $list['data'];
-
                     $user_token = $list['user_token'] ?? '';
                     $share_token = $list['share_token'] ?? '';
                     $list_name = $list['list_name'];
@@ -166,68 +164,55 @@
                     }
 
                     echo '<div class="tm-compare-list tm-compare-grid tm-compare-list-multi">';
-
-                        foreach ($products as $item) {
-
-                            $image = self::createLayeredImage( $item['layerIds'], $item['productName'] );
-                            $url = self::setUrl($item);
-
-                            ?>
-
-                            <div class="tm-compare-item" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>">
-                                <a href="<?php echo esc_url( $url ); ?>">
-                                    <?php echo $image; ?>
-                                    <h2 class="woocommerce-loop-product__title"><?php echo esc_html( $item['productName'] ); ?></h2>
-                                </a>
-                                <?php if ( ! empty( $item['price'] ) ) : ?>
-                                    <p class="price"><strong>Price: </strong><?php echo esc_html( $item['price'] ); ?></p>
-                                <?php endif; ?>
-                                <?php if ( ! empty( $item['colour'] ) ) : ?>
-                                    <p class="colour"><strong>Top Colour: </strong><?php echo esc_html( $item['colour'] ); ?></p>
-                                <?php endif; ?>
-                                <?php if ( ! empty( $item['base'] ) ) : ?>
-                                    <p class="base"><strong>Base: </strong><?php echo esc_html( $item['base'] ); ?></p>
-                                <?php endif; ?>
-                                <?php if ( ! empty( $item['veneer'] ) ) : ?>
-                                    <p class="veneer"><strong>Metal Edge Veneer: </strong><?php echo esc_html( $item['veneer'] ); ?></p>
-                                <?php endif; ?>
-                                <?php if ( ! empty( $item['model'] ) ) : ?>
-                                    <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
-                                <?php endif; ?>
-                                <i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
-                                    data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>
-                                <span 
-                                    class="remove-from-compare" 
-                                    data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
-                                    data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>">
-                                    <!-- SVG Cross Icon -->
-                                    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                                        <line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" stroke-width="2"/>
-                                        <line x1="13" y1="3" x2="3" y2="13" stroke="currentColor" stroke-width="2"/>
-                                    </svg>
-                                </span>
-                            </div>
-                            <?php
-                        }
-
-                        echo '</div>';
-
-                        if ( $user_token ) {
-                            echo $this->listControlButtons($share_token);
-                        }
-                    
+                    foreach ($products as $item) {
+                        $image = self::createLayeredImage( $item['layerIds'], $item['productName'] );
+                        $url = self::setUrl($item);
+                        ?>
+                        <div class="tm-compare-item" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>">
+                            <a href="<?php echo esc_url( $url ); ?>">
+                                <?php echo $image; ?>
+                                <h2 class="woocommerce-loop-product__title"><?php echo esc_html( $item['productName'] ); ?></h2>
+                            </a>
+                            <?php if ( ! empty( $item['price'] ) ) : ?>
+                                <p class="price"><strong>Price: </strong><?php echo esc_html( $item['price'] ); ?></p>
+                            <?php endif; ?>
+                            <?php if ( ! empty( $item['colour'] ) ) : ?>
+                                <p class="colour"><strong>Top Colour: </strong><?php echo esc_html( $item['colour'] ); ?></p>
+                            <?php endif; ?>
+                            <?php if ( ! empty( $item['base'] ) ) : ?>
+                                <p class="base"><strong>Base: </strong><?php echo esc_html( $item['base'] ); ?></p>
+                            <?php endif; ?>
+                            <?php if ( ! empty( $item['veneer'] ) ) : ?>
+                                <p class="veneer"><strong>Metal Edge Veneer: </strong><?php echo esc_html( $item['veneer'] ); ?></p>
+                            <?php endif; ?>
+                            <?php if ( ! empty( $item['model'] ) ) : ?>
+                                <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
+                            <?php endif; ?>
+                            <i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
+                                data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>
+                            <span 
+                                class="remove-from-compare" 
+                                data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
+                                data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>">
+                                <!-- SVG Cross Icon -->
+                                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                                    <line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" stroke-width="2"/>
+                                    <line x1="13" y1="3" x2="3" y2="13" stroke="currentColor" stroke-width="2"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <?php
+                    }
                     echo '</div>';
-
+                    if ( $user_token ) {
+                        echo $this->listControlButtons($share_token);
+                    }
+                    echo '</div>';
                 }
-
                 echo '</div>';
-
                 return ob_get_clean();
-
             } else {
-
                 return $this->empty_message;
-
             }
         }
 
