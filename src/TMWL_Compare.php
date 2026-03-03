@@ -211,7 +211,7 @@
                         }
 
                         echo '</div>';
-                        
+
                         if ( $user_token ) {
                             echo $this->listControlButtons($share_token);
                         }

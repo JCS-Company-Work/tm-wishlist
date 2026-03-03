@@ -6,6 +6,92 @@ import { getProductConfigsFromStorage } from './helpers/storage/get-product-conf
 import { clickButton } from './helpers/buttons/click-button.js';
 import { captureApiResponse } from './helpers/api/capture-api-response.js';
 
+test('User creates new list from wishlist page', async ({ page, baseURL }) => {
+    
+    // Add a product to the wishlist and generate a share token
+    await addProductToWishlist(page, { baseURL, productUrl: '/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox' });
+
+    // Wait for and assert the new button state
+    await assertRemoveFromWishlistVisible(page);
+
+    // Assert the wishlist configs are set in localStorage so that edit button is visible on the wishlist page
+    await getProductConfigsFromStorage(page);
+
+    // Assert the share token is set in localStorage
+    const shareToken = await getShareTokenFromStorage(page);
+    expect(shareToken).not.toBeNull();
+
+    // Navigate to the wishlist page for this share token
+    await page.goto(`${baseURL}/wishlist/share/${shareToken}`);
+
+    // Click Manage Lists button to open the list management interface on the wishlist page
+    await clickButton(page, 'Manage Lists');
+
+    // Click the "Create New List" button
+    await clickButton(page, 'Create New List');
+
+    // Wait for the number of lists to increase to 2
+    await expect(page.locator('.tm-compare-list-wrapper')).toHaveCount(2);
+
+    // Get all list wrapper elements as ElementHandles
+    const listElements = await page.$$('.tm-compare-list-wrapper');
+
+    // Get all h3 elements within tm-compare-list-wrapper and extract their text
+    const headingElements = await page.$$('.tm-compare-list-wrapper h3');
+    const headingTexts = await Promise.all(headingElements.map(async h => (await h.innerText()).trim()));
+    console.log('Headings:', headingTexts);
+
+    // Check uniqueness
+    const uniqueHeadings = new Set(headingTexts);
+    expect(uniqueHeadings.size).toBe(headingTexts.length);
+    expect(uniqueHeadings.size).toBeGreaterThan(1);
+
+    // Save new list element to variable for further assertions
+    const newList = page.locator('.tm-compare-list-wrapper').nth(listElements.length - 1);
+
+    // Assert that the new list has been added to the DOM
+    await expect(newList).toBeVisible();
+
+    // Assert that the new list has a unique share token in its data attribute
+    const newListShareToken = await newList.getAttribute('data-share-token');
+    expect(newListShareToken).not.toBeNull();
+    expect(newListShareToken).not.toBe('');
+
+    // Assert that toggle control are visible for the new list
+    const toggleControls = newList.locator('.list-controls');
+    await expect(toggleControls).toBeVisible();
+
+    // Assert that control buttons are visible for the new list
+    const controlButtons = newList.locator('.list-control-buttons');
+    await expect(controlButtons).toBeVisible();
+
+    // Assert that the new list contains the empty message
+    const listWrappers = page.locator('.tm-compare-list-wrapper');
+
+    // Find numbers of list wrappers in DOM
+    const count = await listWrappers.count();
+    
+    // Flag to track if empty message is found
+    let foundEmpty = false;
+
+    // Loop through list wrappers and check for empty message
+    for (let i = 0; i < count; i++) {
+    
+        // Get the text content of the current list wrapper
+        const text = await listWrappers.nth(i).locator('.tm-compare-list').innerText();
+
+        // Check if the text content matches the empty message
+        if (text.trim() === 'Your wishlist is empty. To start, view our products pages.') {
+            foundEmpty = true;
+            break;
+        }
+    }
+
+    // Assert that the empty message was found in at least one list wrapper
+    expect(foundEmpty).toBe(true);
+
+});
+
 test('User renames their only wishlist from the wishlist page', async ({ page, baseURL }) => {
 
     // Add a product to the wishlist and generate a share token
@@ -56,7 +142,7 @@ test('User deletes single wish list from /wishlist page', async ({ page, baseURL
     // Assert the share token is set in localStorage
     const shareToken = await getShareTokenFromStorage(page);
     expect(shareToken).not.toBeNull();
-console.log(shareToken);
+
     // Navigate to the /wishlist page
     await page.goto(`${baseURL}/wishlist/`);
 
@@ -76,7 +162,87 @@ console.log(shareToken);
     const emptyMessage = await page.locator('.entry-content').innerText();
     expect(emptyMessage).toBe('Your wishlist is empty. To start, view our products pages.');
 
-    // Check data has been removed from localStorage object strucure
-
-
 }); 
+
+test('User deletes single list for me from /wishlist page', async ({ page, baseURL }) => {
+
+    // Add a product to the wishlist and generate a share token
+    await addProductToWishlist(page, { baseURL });
+
+    // Wait for and assert the new button state
+    await assertRemoveFromWishlistVisible(page);
+
+    // Assert the share token is set in localStorage
+    const shareToken = await getShareTokenFromStorage(page);
+    expect(shareToken).not.toBeNull();
+
+     // Navigate to the wishlist page for this share token
+    await page.goto(`${baseURL}/wishlist/share/${shareToken}`);
+
+    // Click Manage Lists button to open the list management interface on the wishlist page
+    await clickButton(page, 'Manage Lists');
+
+    // Delete the wishlist by clicking the delete list (me) button
+    await clickButton(page, 'Delete List (ME)');
+
+    // Listen for the delete API response, capture and assert the response body
+    const responseBody = await captureApiResponse(page, '/wp-json/tm-wishlist/v1/lists/', 'DELETE');
+
+    // Check that data is null in the response which indicates the list was deleted
+    expect(responseBody.data).toBeNull();
+
+    // Wait for the compare list wrapper to be removed from the page
+    await expect(page.locator('.tm-compare-list-wrapper')).toHaveCount(0);
+
+    // Check entry content, should only contain "Your wishlist is empty. To start, view our products pages."
+    const emptyMessage = await page.locator('.entry-content').innerText();
+    expect(emptyMessage).toBe('Your wishlist is empty. To start, view our products pages.');
+
+});
+
+test('User deletes single list for me from /wishlist page with multiple lists present', async ({ page, baseURL }) => {
+
+    // Add a product to the wishlist and generate a share token
+    await addProductToWishlist(page, { baseURL });
+
+    // Wait for and assert the new button state
+    await assertRemoveFromWishlistVisible(page);
+
+    // Assert the share token is set in localStorage
+    const shareToken = await getShareTokenFromStorage(page);
+    expect(shareToken).not.toBeNull();
+
+     // Navigate to the wishlist page for this share token
+    await page.goto(`${baseURL}/wishlist/share/${shareToken}`);
+
+    // Click Manage Lists button to open the list management interface on the wishlist page
+    await clickButton(page, 'Manage Lists');
+
+    // Click the "Create New List" button to create a second list
+    await clickButton(page, 'Create New List');
+
+    // Wait for the number of lists to increase to 2
+    await expect(page.locator('.tm-compare-list-wrapper')).toHaveCount(2);
+
+    // Get all list wrapper elements as ElementHandles
+    const listElements = await page.$$('.tm-compare-list-wrapper');
+
+    // Save new list element to variable for further assertions
+    const newList = page.locator('.tm-compare-list-wrapper').nth(listElements.length - 1);
+
+    // Assert that the new list has been added to the DOM
+    await expect(newList).toBeVisible();
+
+    // Delete the wishlist by clicking the delete list (me) button
+    await clickButton(newList, 'Delete List (ME)');
+
+    // Listen for the delete API response, capture and assert the response body
+    const responseBody = await captureApiResponse(page, '/wp-json/tm-wishlist/v1/lists/', 'DELETE');
+
+    // Check that data is null in the response which indicates the list was deleted
+    expect(responseBody.data).toBeNull();
+
+    // Wait for one compare list wrapper to be removed from the page, should be 1 remaining
+    await expect(page.locator('.tm-compare-list-wrapper')).toHaveCount(1);
+
+});

@@ -366,6 +366,41 @@ class TMCompare {
 
     /** ================= User Triggered Actions ================= **/
 
+    /** 
+     * Delete a compare list 
+     * @param {HTMLElement} wrapper - The wrapper element of the list to be deleted
+     * @param {string} shareToken - The share token of the list to be deleted
+    */
+    deleteList(wrapper, shareToken) {
+
+        // Get user token from cookie
+        const userTokenMatch = document.cookie.match(/(?:^|; )tm_wishlist_user_token=([^;]*)/);
+        const userToken = userTokenMatch ? userTokenMatch[1] : null;
+        
+        // Get all user lists from localStorage
+        let allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+        
+        // If the list exists for this user and share token, remove it from localStorage
+        if (allUserLists[userToken] && allUserLists[userToken][shareToken]) {
+
+            // Remove the share token key entirely from the user's lists
+            delete allUserLists[userToken][shareToken];
+            
+            // Save the updated lists back to localStorage
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
+
+        }
+
+        // Remove the deleted list from the DOM
+        wrapper.remove();
+
+        // If there are no lists show empty message in the main content
+        if (document.querySelectorAll('.tm-compare-list-wrapper').length === 0) {
+            document.querySelector('.entry-content').innerHTML = this.EMPTY_MESSAGE;
+        }
+
+    }
+
     /**
      * Remove single item from compare list
      * @param {HTMLElement} btn - The button that was clicked
@@ -605,14 +640,8 @@ class TMCompare {
             
             if (data.success && data.type === 'list cleared for user') {
 
-                // Clear the list in localStorage so user starts with a fresh list if they add new items
-                clearWishlistStorage();
-
-                // If data is null, it means the list was deleted, so remove the entire wrapper
-                wrapper.remove();
-
-                // Show empty message in the main content
-                document.querySelector('.entry-content').innerHTML = this.EMPTY_MESSAGE;
+                // Remove list from DOM and update UI
+                this.deleteList(wrapper, shareToken);
 
             } else if (Array.isArray(data.data) && data.data.length === 0) {
 
