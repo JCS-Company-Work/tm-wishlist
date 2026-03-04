@@ -5,10 +5,10 @@ import { clickButton } from './helpers/buttons/click-button.js';
 import { assertRemoveFromWishlistVisible } from './helpers/buttons/assert-remove-from-wishlist-visible.js';
 import { waitForConfigsInStorage } from './helpers/storage/wait-for-configs-in-storage.js';
 
-test('User with only one wishlist visits the wishlist page: shows empty message', async ({ page }) => {
+test('User with only one wishlist visits the wishlist page: shows empty message', async ({ page, baseURL }) => {
 
     // Go to the wishlist page
-    await page.goto('https://tm-store-jan-26.local/wishlist');
+    await page.goto(`${baseURL}/wishlist`);
 
     // Clear test state before starting
     await clearTestState(page);
@@ -21,7 +21,7 @@ test('User with only one wishlist visits the wishlist page: shows empty message'
 
 });
 
-test('Check add/remove button state change on click from product page', async ({ page }) => {
+test('Check add/remove button state change on click from product page', async ({ page, baseURL }) => {
 
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL });
@@ -70,10 +70,10 @@ test('Check add/remove button state on page load with existing wishlist item', a
 
 });
 
-test('User adds an item to their only wishlist from fresh, no user token or share token present', async ({ page }) => {
+test('User adds an item to their only wishlist from fresh, no user token or share token present', async ({ page, baseURL }) => {
 
     // Go to a product page
-    await page.goto('https://tm-store-jan-26.local/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox');
+    await page.goto(`${baseURL}/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox`);
 
     // Clear test state before starting
     await clearTestState(page);
@@ -119,7 +119,7 @@ test('User adds an item to their only wishlist from fresh, no user token or shar
 
 });
 
-test ('Test token recovery if cookies/share token missing', async ({ page }) => {
+test ('Test token recovery if cookies/share token missing', async ({ page, baseURL }) => {
     
     // Helper to log user token
     async function logUserToken(step) {
@@ -205,6 +205,7 @@ test ('Test token recovery if cookies/share token missing', async ({ page }) => 
     const addButton = page.getByRole('button', { name: 'Add to wishlist' });
     await addButton.waitFor({ state: 'visible' });
     await expect(addButton).toHaveText('Add to wishlist');
+
     // Check that user token is not regenerated
     userToken = await page.evaluate(() => {
         const match = document.cookie.match(/tm_wishlist_user_token=([^;]+)/);

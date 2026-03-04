@@ -154,11 +154,15 @@
                     echo $this->openCloseActive();
                     echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($list_name) . '</h3><button type="button" class="edit-list-name" aria-label="Edit list name">edit</button></div>';
 
-                    // If no items in this list, show message, close wrapper, and skip to next list
+                    // If no items in this list, show message, control buttons, close wrapper, and skip to next list
                     if (empty($products) || !is_array($products)) {
                         echo '<div class="tm-compare-list tm-compare-list-multi">';
                         echo $this->empty_message;
                         echo '</div>'; // Close .tm-compare-list-multi
+                        // Show control buttons even for empty lists
+                        if ($user_token) {
+                            echo $this->listControlButtons($share_token);
+                        }
                         echo '</div>'; // Close .tm-compare-list-wrapper
                         continue;
                     }

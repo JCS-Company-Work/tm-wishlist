@@ -519,6 +519,7 @@
             // Return success response
             return rest_ensure_response([
                 'success' => true,
+                'type' => 'list deleted for all',
                 'share_token' => $share_token,
                 'data' => null,
             ]);

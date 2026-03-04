@@ -207,6 +207,9 @@ class TMCompare {
 
                             // Re-bind control button listeners for the new list
                             this.addRemoveBtnListeners();
+
+                            // Re-bind control button listeners for the new list
+                            this.addControlBtnListeners();
                             
                         }
                     }
@@ -665,6 +668,16 @@ class TMCompare {
                 // Display empty message
                 listContainer.innerHTML = this.EMPTY_MESSAGE;
 
+            } else if(data.type === 'list deleted for all') {
+
+                // If the list was deleted for all users, remove it from the DOM and show empty message if we are on the share page
+                if (window.location.pathname.startsWith('/wishlist/share/')) {
+                    document.querySelector('.entry-content').innerHTML = this.EMPTY_MESSAGE;
+                }
+
+                // Remove the deleted list from the DOM
+                wrapper.remove();
+
             } else if(data.data === null) {
 
                 // Check if the share_token in the response is in the current URL if it is this is a single
@@ -737,7 +750,7 @@ class TMCompare {
                         shareBtn.textContent = originalText;
                         shareBtn.style.minWidth = '';
                     }, 2000);
-                    
+
                 });
 
             } else {

@@ -173,7 +173,7 @@ test('User deletes single wish list from /wishlist page', async ({ page, baseURL
 
     // Check entry content, should only contain "Your wishlist is empty. To start, view our products pages."
     const emptyMessage = await page.locator('.entry-content').innerText();
-    expect(emptyMessage).toBe('Your wishlist is empty. To start, view our products pages.');
+    expect(emptyMessage).toContain('Your wishlist is empty. To start, view our products pages.');
 
 }); 
 
@@ -212,11 +212,11 @@ test('User deletes single list for me from /wishlist page', async ({ page, baseU
 
     // Check entry content, should only contain "Your wishlist is empty. To start, view our products pages."
     const emptyMessage = await page.locator('.entry-content').innerText();
-    expect(emptyMessage).toBe('Your wishlist is empty. To start, view our products pages.');
+    expect(emptyMessage).toContain('Your wishlist is empty. To start, view our products pages.');
 
 });
 
-test('User deletes single list for me from /wishlist page with multiple lists present', async ({ page, baseURL }) => {
+test('User deletes a single list for me from /wishlist page with multiple lists present', async ({ page, baseURL }) => {
 
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL });
@@ -302,15 +302,33 @@ test('User updates active list via wishlist controls', async ({ page, baseURL })
     // Assert that the new list has been added to the DOM
     await expect(newList).toBeVisible();
 
-    // Click the "Activate" button on the new list to switch active list
-    await newList.click('.list-active');
+    const activeButton = newList.locator('.list-active');
 
-    // Wait for the active class to be applied to the new list wrapper
+    // Wait for the activate button to be visible
+    await activeButton.waitFor({ state: 'visible' });
+
+    // Assert that the activate button is visible and enabled
+    await expect(activeButton).toBeVisible();
+    await expect(activeButton).toBeEnabled();
+
+    // Click the activate button for the new list
+    await activeButton.click();
+
+    // Wait for the active class to be applied to the new list wrapper and the 'selected' 
+    // class to be applied to the .list-active element
     await expect(newList).toHaveClass(/active/);
-
-    // Wait for the 'selected' class to be applied to the .list-active element inside the new list
     const activeIcon = newList.locator('.list-active');
     await expect(activeIcon).toHaveClass(/selected/);
+
+    // Assert the active class is applied to the new list wrapper
+    await expect(newList).toHaveClass(/active/);
+
+    // Assert the 'selected' class is applied to the .list-active element inside the new list
+    await expect(activeIcon).toHaveClass(/selected/);
+
+    // Optionally, wait for selectors as fallback for timing issues
+    await page.waitForSelector('.tm-compare-list-wrapper.active');
+    await page.waitForSelector('.list-active.selected');
 
 });
 
