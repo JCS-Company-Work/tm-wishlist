@@ -338,7 +338,6 @@
          */
         public function activeWishlistControls($type, $active_list_name) {
 
-            var_dump($active_list_name);
             $active_list_html = !empty($active_list_name)
                 ? '<p class="active-list-name">Active Wishlist: </p><span class="active-list-span button">' . esc_html($active_list_name) . '</span>'
                 : '';
@@ -436,10 +435,10 @@
          *
          * @return string
          */
-        public function openCloseActive(){
+        public function openCloseActive( $status = ''){
 
             // This function returns HTML for the open/close toggle and active indicator for compare lists
-            return '<div class="list-controls"><span class="list-active">&#10003;</span><span class="list-toggle"></span></div>';
+            return '<div class="list-controls"><span class="list-active">&#10003;</span><span class="list-toggle ' . $status . '"></span></div>';
 
         }
 

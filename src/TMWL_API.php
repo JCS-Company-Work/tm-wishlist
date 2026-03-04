@@ -161,12 +161,12 @@
             $buttons_html = $compare->listControlButtons($share_token);
             
             // Get toggle controls HTML
-            $list_toggle_controls = $compare->openCloseActive();
+            $list_toggle_controls = $compare->openCloseActive('active');
 
             $list_html = '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">' .
                 $list_toggle_controls .
                 '<h3>' . esc_html($new_list_name) . '</h3>' .
-                '<div class="tm-compare-list"><p>Your wishlist is empty. To start, view our products pages.</p></div>' .
+                '<div class="tm-compare-list tm-compare-grid tm-compare-list-multi open"><p>Your wishlist is empty. To start, view our products pages.</p></div>' .
                 $buttons_html .
                 '</div>';
 

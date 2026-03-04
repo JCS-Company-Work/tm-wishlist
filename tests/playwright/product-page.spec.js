@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { addProductToWishlist } from './helpers/product/add-product-to-wishlist.js';
 import { clearTestState } from './helpers/test/clear-state.js';
 import { clickButton } from './helpers/buttons/click-button.js';
 import { assertRemoveFromWishlistVisible } from './helpers/buttons/assert-remove-from-wishlist-visible.js';
@@ -22,17 +23,14 @@ test('User with only one wishlist visits the wishlist page: shows empty message'
 
 test('Check add/remove button state change on click from product page', async ({ page }) => {
 
-    // Go to a product page
-    await page.goto('https://tm-store-jan-26.local/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox');
-    
-    // Clear test state before starting
-    await clearTestState(page);
+    // Add a product to the wishlist and generate a share token
+    await addProductToWishlist(page, { baseURL });
 
-    // Clear local storage to ensure the user has no existing wishlist data
-    await page.evaluate(() => localStorage.clear());
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
 
-    // Click the "Add to wishlist" button
-    const addButton = await clickButton(page, 'Add to wishlist');
+    // Wait for and assert the new button state
+    await assertRemoveFromWishlistVisible(page);
 
     // Wait until wishlist configs are properly saved in local storage
     await waitForConfigsInStorage(page);
@@ -47,23 +45,18 @@ test('Check add/remove button state change on click from product page', async ({
     await removeButton.click();
 
     // Wait for and assert the button state has changed back to "Add to wishlist"
+    const addButton = await clickButton(page, 'Add to wishlist');
     await addButton.waitFor({ state: 'visible' });
     await expect(addButton).toHaveText('Add to wishlist');
 
 });
 
-test('Check add/remove button state on page load with existing wishlist item', async ({ page }) => {
+test('Check add/remove button state on page load with existing wishlist item', async ({ page, baseURL }) => {
 
-    // Go to a product page
-    await page.goto('https://tm-store-jan-26.local/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox');
+    // Add a product to the wishlist and generate a share token
+    await addProductToWishlist(page, { baseURL });
 
-    // Clear test state before starting
-    await clearTestState(page);
-
-    // Click the "Add to wishlist" button
-    await clickButton(page, 'Add to wishlist');
-
-    // Wait until wishlist configs are properly saved in local storage
+    // Wait for configs to be present before asserting button
     await waitForConfigsInStorage(page);
 
     // Wait for and assert the new button state
@@ -137,14 +130,14 @@ test ('Test token recovery if cookies/share token missing', async ({ page }) => 
         //console.log(`${step} user token:`, userToken);
     }
 
-    // Go to a product page
-    await page.goto('https://tm-store-jan-26.local/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox');
+    // Add a product to the wishlist and generate a share token
+    await addProductToWishlist(page, { baseURL });
 
-    // Clear test state before starting
-    await clearTestState(page);
+    // Wait for configs to be present before asserting button
+    await waitForConfigsInStorage(page);
 
-    // Click the "Add to wishlist" button
-    await clickButton(page, 'Add to wishlist');
+    // Wait for and assert the new button state
+    const removeButton = await assertRemoveFromWishlistVisible(page);
 
     // Wait for configs to be present before asserting button
     await waitForConfigsInStorage(page);
@@ -152,8 +145,7 @@ test ('Test token recovery if cookies/share token missing', async ({ page }) => 
     // Log the user token after adding to wishlist
     await logUserToken('Initial');
 
-    // Wait for and assert the new button state
-    const removeButton = await assertRemoveFromWishlistVisible(page);
+    // Get the "Remove from wishlist" button
     await removeButton.waitFor({ state: 'visible' });
     await expect(removeButton).toHaveText('Remove from wishlist');
 

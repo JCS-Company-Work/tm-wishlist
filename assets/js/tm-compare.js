@@ -198,6 +198,16 @@ class TMCompare {
                         const newListHTML = data.list_html;
                         if (lists && newListHTML) {
                             lists.insertAdjacentHTML('afterbegin', newListHTML);
+
+                            // Re-bind event listeners for toggle controls for the new list
+                            this.toggleList();
+
+                            // Re-bind event listeners for the active icon for the new list
+                            this.updateActiveList();
+
+                            // Re-bind control button listeners for the new list
+                            this.addRemoveBtnListeners();
+                            
                         }
                     }
                 });
@@ -211,37 +221,27 @@ class TMCompare {
      */
     toggleList() {
 
-        // Add click listener to list toggle buttons
         const toggleButtons = document.querySelectorAll('.list-toggle');
-
-        // Check if toggle buttons exist in DOM
         if (toggleButtons.length > 0) {
-
-            // Loop through toggle buttons and add click listener
             toggleButtons.forEach((btn) => {
-
-                btn.addEventListener('click', () => {
-
-                    // Toggle active class on button
-                    btn.classList.toggle('active');
-
-                    // Toggle open/close state for the wrapper and list
-                    const wrapper = btn.closest('.tm-compare-list-wrapper');
-
-                    // Toggle open class on the compare list within the wrapper
-                    const compareList = wrapper.querySelector('.tm-compare-list-multi');
-
-                    // Toggle open class to show/hide the list
-                    if (compareList) {
-                        compareList.classList.toggle('open');
-                    }
-
-                });
-
+                btn.removeEventListener('click', this.handleToggleClick);
+                btn.addEventListener('click', this.handleToggleClick);
             });
-
         }
 
+    }
+
+    /** 
+     * Handle click event for list toggle buttons to open/close the compare list and toggle active state
+     */
+    handleToggleClick(e) {
+        const btn = e.currentTarget;
+        btn.classList.toggle('active');
+        const wrapper = btn.closest('.tm-compare-list-wrapper');
+        const compareList = wrapper.querySelector('.tm-compare-list-multi');
+        if (compareList) {
+            compareList.classList.toggle('open');
+        }
     }
 
     /**
@@ -927,6 +927,7 @@ class TMCompare {
 
         // Get new name from input or fallback to current name if input is empty
         const newName = input.value.trim() || currentName;
+        const isActiveList = wrapper.classList.contains('active');
         const shareToken = wrapper.dataset.shareToken;
         const userTokenMatch = document.cookie.match(/(?:^|; )tm_wishlist_user_token=([^;]*)/);
         const userToken = userTokenMatch ? userTokenMatch[1] : null;
@@ -948,6 +949,11 @@ class TMCompare {
                 data = {};
             }
             if (response.ok && data && data.success) {
+
+                if(isActiveList) {
+                    this.updateActiveListTitle(newName);
+                }
+
                 this.restoreHeader(header, newName);
             } else {
                 
