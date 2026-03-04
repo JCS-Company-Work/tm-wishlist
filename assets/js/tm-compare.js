@@ -715,14 +715,29 @@ class TMCompare {
 
         } else {
 
+            // If Web Share API is not supported, copy the URL to the clipboard and show a temporary "Copied!" message
+
             // Fallback: copy to clipboard if Web Share API is not supported
             if (navigator.clipboard) {
 
                 navigator.clipboard.writeText(url).then(function() {
-                    if (shareCopied) {
-                        shareCopied.style.display = 'inline';
-                        setTimeout(function(){ shareCopied.style.display = 'none'; }, 1500);
-                    }
+
+                    // Save original button text and width
+                    const originalText = shareBtn.textContent;
+
+                    // Set a minimum width to prevent button from resizing when text changes
+                    const originalWidth = shareBtn.offsetWidth;
+                    shareBtn.style.minWidth = originalWidth + 'px';
+
+                    // Change button text to 'Copied!'
+                    shareBtn.textContent = 'Copied!';
+
+                    // Revert to original after 2 seconds
+                    setTimeout(function(){
+                        shareBtn.textContent = originalText;
+                        shareBtn.style.minWidth = '';
+                    }, 2000);
+                    
                 });
 
             } else {

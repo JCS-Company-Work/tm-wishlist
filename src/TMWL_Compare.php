@@ -417,13 +417,18 @@
                     'action' => 'delete_list_me',
                 ],
             ];
-            
+
+            // Loop over data and create buttons
             $buttons = array_map(function($button) use($share_token) {
 
-                // Add data-url based on action value
-                $data_url = $button['action'] === 'share_wishlist' ? (trailingslashit( home_url( 'wishlist' ) ) . 'share/' . rawurlencode( $share_token ) . '/') : '';
-                    
-                return '<button id="' . esc_attr($button['action']) . '" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-product-id="6779" data-url="' . esc_url($data_url) . '" role="button" aria-pressed="false">' . esc_html($button['label']) . '</button>';
+                // Add wrapper to share wishlist button
+                if($button['action'] === 'share_wishlist') {
+
+                    return '<div class="share-button-wrapper"><button id="' . esc_attr($button['action']) . '" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-url="' . esc_url(trailingslashit( home_url( 'wishlist' ) ) . 'share/' . rawurlencode( $share_token ) . '/') . '" role="button" aria-pressed="false">' . esc_html($button['label']) . '</button></div>';
+
+                }
+
+                return '<button id="' . esc_attr($button['action']) . '" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" role="button" aria-pressed="false">' . esc_html($button['label']) . '</button>';
             
             }, $buttonData);
 

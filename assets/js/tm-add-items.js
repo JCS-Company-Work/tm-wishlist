@@ -136,6 +136,12 @@ class TMAddItems {
 
     // Ensure button is valid
     if (!button) return;
+
+    // Get product ID
+    const productId = this.getProductId(button);
+    
+    // Ensure product ID is present
+    if (!productId) return;
     
     // Get product ID
     const currentConfig = this.getCurrentProductConfig();
@@ -458,7 +464,7 @@ class TMAddItems {
         // Update button state using refactored method
         const button = document.querySelector('.tm-add-to-compare');
         if (button) {
-          const savedConfigs = parsedConfigs[userToken] ? Object.values(parsedConfigs[userToken]).flat() : [];
+          const savedConfigs = parsedConfigs[userToken] ? Object.values(parsedConfigs[userToken]) : [];
           this.updateButtonState(button, savedConfigs);
         }
         return;
@@ -479,7 +485,7 @@ class TMAddItems {
           // Update button state using refactored method
           const button = document.querySelector('.tm-add-to-compare');
           if (button && data.data) {
-            const savedConfigs = Object.values(data.data).flat();
+            const savedConfigs = Object.values(data.data);
             this.updateButtonState(button, savedConfigs);
           }
           // Seed data from server now that we have the user token
@@ -762,14 +768,10 @@ class TMAddItems {
     });
     // Save updated list
     this.saveConfigs(savedConfigs);
-      // Always store flat array for test compatibility
-      try {
-        localStorage.setItem(this.STORAGE_KEY + '_flat', JSON.stringify(savedConfigs));
-      } catch (e) {
-        console.warn(e);
-      }
+
     // Update button state after successful add
     if (button) this.setButtonState(button, true);
+
     // Update status text
     this.statusText('Product added to wishlist.');
 

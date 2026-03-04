@@ -17,6 +17,9 @@ yarn-error.log
 vendor/
 composer.lock
 
+# Ignore test results and coverage reports
+/test-results/
+
 # Ignore build artifacts
 /dist/
 /build/
