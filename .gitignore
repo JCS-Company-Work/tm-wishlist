@@ -18,7 +18,7 @@ vendor/
 composer.lock
 
 # Ignore test results and coverage reports
-/test-results/
+test-results/
 
 # Ignore build artifacts
 /dist/

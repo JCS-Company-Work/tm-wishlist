@@ -52,6 +52,9 @@ class TMCompare {
         // Update list names on edit button click
         this.updateListName();
 
+        // Check for new list data in localStorage and insert it into the DOM if it exists 
+        this.checkAndInsertNewListFromStorage();
+
     }
 
     /** ================= Event Binding / Setup ================= **/
@@ -189,34 +192,156 @@ class TMCompare {
                     // If we are on the share page, redirect to the main wishlist page to show the new list
                     if (window.location.pathname.startsWith('/wishlist/share/')) {
                         window.location.href = '/wishlist';
+
+                        // Add data to local storage for use after redirect
+                        localStorage.setItem('tm_wishlist_new_list_data', JSON.stringify(data));
+
                     } else {
+
                         // Else just add the new list to the compare page
                         console.log('Action response:', data);
+
+                        // Update UI based on response by adding new list to the DOM
+                        this.addNewListToDom(data);
     
-                        // Add new list to the compare page
-                        const lists = document.querySelector('.tm-wishlist-lists');
-                        const newListHTML = data.list_html;
-                        if (lists && newListHTML) {
-                            lists.insertAdjacentHTML('afterbegin', newListHTML);
-
-                            // Re-bind event listeners for toggle controls for the new list
-                            this.toggleList();
-
-                            // Re-bind event listeners for the active icon for the new list
-                            this.updateActiveList();
-
-                            // Re-bind control button listeners for the new list
-                            this.addRemoveBtnListeners();
-
-                            // Re-bind control button listeners for the new list
-                            this.addControlBtnListeners();
-                            
-                        }
                     }
                 });
 
             });
         }
+    }
+
+    /**
+     * Add a new compare list to the DOM using the HTML returned from the server after creating a new list
+     * 
+     * @param {object} data 
+     */
+    addNewListToDom(data) {
+
+        // Add new list to the compare page
+        const lists = document.querySelector('.tm-wishlist-lists');
+
+        // Extract new list HTML from response data
+        const newListHTML = data.list_html;
+
+        // If list HTML exists, insert it into the DOM and bind necessary event listeners for the new list
+        if (lists && newListHTML) {
+
+            // Guard to prevent duplicate insertion if timing page load and API response are close together 
+            // and the new list already exists in the DOM from a previous response or page load check
+            if (!document.querySelector(`.tm-compare-list-wrapper[data-share-token="${data.share_token}"]`)) {
+
+                // Insert new list HTML into the DOM as the first child of the lists container
+                lists.insertAdjacentHTML('afterbegin', newListHTML);
+
+                // Re-bind event listeners for toggle controls for the new list
+                this.toggleList();
+
+                // Re-bind event listeners for the active icon for the new list
+                this.updateActiveList();
+
+                // Re-bind control button listeners for the new list
+                this.addRemoveBtnListeners();
+
+                // Re-bind control button listeners for the new list
+                this.addControlBtnListeners();
+
+                // Add new list to configs in localstorage with an empty array
+                this.updateConfigsWithNewList(data.user_token, data.share_token);
+
+            }
+            
+        }
+
+    }
+
+    /**
+     * Check for new list data in localStorage (after redirect from creating
+     * a new list on wishlist/share) and add it to the DOM if it exists
+     */
+    checkAndInsertNewListFromStorage() {
+
+        // Check for new list data in local storage
+        if(localStorage.getItem('tm_wishlist_new_list_data')) {
+
+            // If new list data exists, parse it and add the new list to the DOM
+            const newListData = JSON.parse(localStorage.getItem('tm_wishlist_new_list_data'));
+
+            // Add new list to the DOM
+            this.addNewListToDom(newListData);
+
+            // Remove the new list data from localStorage to prevent duplicate additions
+            localStorage.removeItem('tm_wishlist_new_list_data');
+
+        }
+
+    }
+
+    /**
+     * 
+     * When a new list is created, add it to localStorage configs 
+     * If configs are empty, attempt to repopulate from database
+     * 
+     * @param {string} userToken 
+     * @param {string} shareToken 
+     */
+    updateConfigsWithNewList(userToken, shareToken) {
+
+        // Get all user lists from localStorage or initialize
+        let allUserLists = {};
+
+        try {
+
+            // Attempt to parse existing localStorage data
+            allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+
+        } catch {
+
+            // If parsing fails, log a warning and reset to an empty object to allow saving new data
+            allUserLists = {};
+            console.warn('Failed to parse wishlist data from localStorage. Resetting to empty object.');
+        }
+
+        // Ensure user token structure
+        // If allUserLists is empty check database with user token to find existing lists and populate localStorage
+        if (!allUserLists[userToken]) {
+            fetch(`/wp-json/tm-wishlist/v1/lists?user_token=${userToken}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+
+                // If data contains lists, populate localStorage with them
+                if (data && Array.isArray(data.lists)) {
+
+                    // Initialize user token structure in allUserLists
+                    allUserLists[userToken] = {};
+                    
+                    // Loop through lists and add them to the user token in 
+                    // allUserLists with share token as key and configs as value
+                    data.lists.forEach(list => {
+                        allUserLists[userToken][list.share_token] = list.configs || [];
+                    });
+
+                }
+
+                // Add empty array for the new list
+                allUserLists[userToken][shareToken] = [];
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
+
+            });
+
+        } else {
+
+            // Add empty array for the new list
+            allUserLists[userToken][shareToken] = [];
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
+            
+        }
+
     }
 
     /**
@@ -389,14 +514,62 @@ class TMCompare {
         // If the list exists for this user and share token, remove it from localStorage
         if (allUserLists[userToken] && allUserLists[userToken][shareToken]) {
 
-            // Remove the share token key entirely from the user's lists
-            delete allUserLists[userToken][shareToken];
+            // Check if deleted list was active
+            const activeShareToken = localStorage.getItem('tm_wishlist_share_token');
+
+            if (allUserLists[userToken] && allUserLists[userToken][shareToken]) {
+                // Remove the share token key entirely from the user's lists
+                delete allUserLists[userToken][shareToken];
+            }
+
+            // If the deleted list was the active list, we need to set a new active list or clear the active share token
+            if (activeShareToken === shareToken) {
+                
+                // If deleted list was active pass active state to first available list
+                const firstAvailableList = Object.keys(allUserLists[userToken])[0];
+
+                if (firstAvailableList) {
+
+                    // Set the first available list as active in localStorage
+                    localStorage.setItem('tm_wishlist_share_token', firstAvailableList);
+
+                    // Also set the active share token cookie for server-side access to update active title
+                    document.cookie = 'tm_wishlist_share_token=' + firstAvailableList + '; path=/';
+
+                    // Update active state in the UI
+                    document.querySelectorAll('.tm-compare-list-wrapper').forEach(el => el.classList.remove('active'));
+
+                    // Select new active wrapper using the first available share token
+                    const newActiveWrapper = document.querySelector(`.tm-compare-list-wrapper[data-share-token="${firstAvailableList}"]`);
+
+                    if (newActiveWrapper) {
+
+                        // Add active class to the new active wrapper
+                        newActiveWrapper.classList.add('active');
+                        
+                        // Also update the active icon state
+                        newActiveWrapper.querySelector('.list-active').classList.add('selected');
+
+                        // Update the active list title in the header
+                        const newTitle = newActiveWrapper.querySelector('.tm-compare-list-name').textContent;
+
+                        this.updateActiveListTitle(newTitle);
+
+                    }
+                } else {
+                    console.log('No more lists available, removing active share token from localStorage');
+                    // If no lists remain, remove active share token from localStorage
+                    localStorage.removeItem('tm_wishlist_share_token');
+                }
+            }
             
             // Save the updated lists back to localStorage
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allUserLists));
 
-            // Remove share token from storage
-            localStorage.removeItem('tm_wishlist_share_token');
+            // Only remove active share token if no lists remain
+            if (!Object.keys(allUserLists[userToken]).length) {
+                localStorage.removeItem('tm_wishlist_share_token');
+            }
 
             // Remove share token cookie if it matches the deleted list's share token to prevent stale cookie
             if (document.cookie.includes(`tm_wishlist_share_token=${shareToken}`)) {
@@ -404,6 +577,8 @@ class TMCompare {
             }
 
         }
+
+        
 
         // Remove the deleted list from the DOM
         wrapper.remove();
@@ -529,17 +704,11 @@ class TMCompare {
             // If no more items remain, show empty message and hide control buttons
             if (listContainer && listContainer.querySelectorAll('.tm-compare-item').length === 0) {
 
-                // Hide control buttons if present
-                const controls = wrapper.querySelector('.list-control-buttons');
-
-                // If controls exist, hide them since the list is now empty
-                if (controls) controls.style.display = 'none';
-
                 // Remove grid from list container
                 listContainer.classList.remove('tm-compare-grid');
 
-                // Show empty message
-                listContainer.innerHTML = this.EMPTY_MESSAGE;
+                // Show empty message as first element
+                listContainer.insertAdjacentHTML('afterbegin', this.EMPTY_MESSAGE);
 
             }
         }
@@ -579,14 +748,14 @@ class TMCompare {
         // Process data
         try {
 
-        // Attempt to parse existing localStorage data
-        allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+            // Attempt to parse existing localStorage data
+            allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
 
         } catch {
 
-        // If parsing fails, log a warning and reset to an empty object to allow saving new data
-        allUserLists = {};
-        console.warn('Failed to parse wishlist data from localStorage. Resetting to empty object.');
+            // If parsing fails, log a warning and reset to an empty object to allow saving new data
+            allUserLists = {};
+            console.warn('Failed to parse wishlist data from localStorage. Resetting to empty object.');
 
         }
 
@@ -675,8 +844,8 @@ class TMCompare {
                     document.querySelector('.entry-content').innerHTML = this.EMPTY_MESSAGE;
                 }
 
-                // Remove the deleted list from the DOM
-                wrapper.remove();
+                // Remove list from DOM and update UI
+                this.deleteList(wrapper, shareToken);
 
             } else if(data.data === null) {
 
@@ -687,7 +856,7 @@ class TMCompare {
                 }
 
                 // If data is null, it means the list was deleted, so remove the entire wrapper
-                wrapper.remove();
+                this.deleteList(wrapper, shareToken);
 
                 document.querySelector('.entry-content').innerHTML = this.EMPTY_MESSAGE;
 

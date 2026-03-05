@@ -165,7 +165,7 @@
 
             $list_html = '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">' .
                 $list_toggle_controls .
-                '<h3>' . esc_html($new_list_name) . '</h3>' .
+                '<h3 class="tm-compare-list-name">' . esc_html($new_list_name) . '</h3>' .
                 '<div class="tm-compare-list tm-compare-grid tm-compare-list-multi open"><p>Your wishlist is empty. To start, view our products pages.</p></div>' .
                 $buttons_html .
                 '</div>';

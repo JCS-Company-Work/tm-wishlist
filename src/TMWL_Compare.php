@@ -428,7 +428,7 @@
                 // Add wrapper to share wishlist button
                 if($button['action'] === 'share_wishlist') {
 
-                    return '<div class="share-button-wrapper"><button id="' . esc_attr($button['action']) . '" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-url="' . esc_url(trailingslashit( home_url( 'wishlist' ) ) . 'share/' . rawurlencode( $share_token ) . '/') . '" role="button" aria-pressed="false">' . esc_html($button['label']) . '</button></div>';
+                    return '<button id="' . esc_attr($button['action']) . '" class="tm-add-to-compare btn btn-outline-secondary btn-sm button level-02" data-url="' . esc_url(trailingslashit( home_url( 'wishlist' ) ) . 'share/' . rawurlencode( $share_token ) . '/') . '" role="button" aria-pressed="false">' . esc_html($button['label']) . '</button>';
 
                 }
 

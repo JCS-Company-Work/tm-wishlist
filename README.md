@@ -59,6 +59,14 @@ A modern, multi-list wishlist plugin for WordPress/WooCommerce, supporting both 
   - `PUT /wp-json/tm-wishlist/v1/lists/{share_token}` — Rename wishlist
   - `DELETE /wp-json/tm-wishlist/v1/lists/{share_token}` — Delete wishlist
 
+## Recent Updates (2026-03-05)
+- Multi-list page: Users can create new wishlists, delete existing ones, and switch between multiple lists directly from the wishlist page.
+- Automatic data recovery: If localStorage configs are missing, the plugin fetches and restores all user lists from the server for seamless recovery.
+- Improved localStorage initialization: New wishlists are always initialized as empty arrays keyed by share token, even when recovering from server.
+- Robust active list promotion: When deleting the active list, the next available list is automatically promoted as active in both UI and localStorage/cookie.
+- All developer notes and inline comments are retained for maintainability and clarity.
+- Minor bug fixes and code formatting improvements in JS wishlist logic.
+
 ## Developer Notes
 - All tokens are generated server-side for security.
 - Use localStorage for instant UI updates; use cookies for server sync.
