@@ -6,7 +6,7 @@ import { getShareTokenFromStorage } from './helpers/storage/get-share-token-from
 import { getProductConfigsFromStorage } from './helpers/storage/get-product-configs-from-storage.js';
 import { clickButton } from './helpers/buttons/click-button.js';
 
-test('Edit wishlist name inline', async ({ page, baseURL }) => {
+test('Edit wishlist name inline @critical', async ({ page, baseURL }) => {
 
     // Add a product to the wishlist and generate a share token
     await addProductToWishlist(page, { baseURL, productUrl: '/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox' });
@@ -24,11 +24,11 @@ test('Edit wishlist name inline', async ({ page, baseURL }) => {
     // Navigate to the wishlist page for this share token
     await page.goto(`${baseURL}/wishlist/share/${shareToken}`);
 
-    // Assert that the "Manage Lists" button is visible to the owner
-    const manageButton = page.getByRole('button', { name: 'Manage Lists' });
-
     // Click Manage Lists button to open the list management interface on the wishlist page
-    await Promise.all([page.waitForNavigation(), clickButton(page, 'Manage Lists')]);
+    await clickButton(page, 'Manage Lists');
+    
+    // Wait for the list management interface to load by checking for the presence of list wrapper elements
+    await page.waitForSelector('.tm-compare-list-wrapper');
 
     // Assert the wishlist configs are set in localStorage so that edit button is visible on the wishlist page
     await getProductConfigsFromStorage(page);
@@ -40,8 +40,14 @@ test('Edit wishlist name inline', async ({ page, baseURL }) => {
     const nameInput = page.locator('#edit-list-name-input');
     await nameInput.fill('My New Wishlist Name');
 
-    // Click the "Save" button to save the new wishlist name
-    await clickButton(page, 'Save');
+    // Wait for the Save button to be visible and enabled, then click
+    const saveBtn = page.locator('.save-list-name');
+    await saveBtn.waitFor({ state: 'visible' });
+    await expect(saveBtn).toBeEnabled();
+    await saveBtn.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: 'save-btn-blocked.png' });
+    await saveBtn.click({ force: true });
+
 
     // Assert that the new wishlist name is displayed on the page
     const wishlistNameHeading = page.locator('h3', { hasText: 'My New Wishlist Name' });

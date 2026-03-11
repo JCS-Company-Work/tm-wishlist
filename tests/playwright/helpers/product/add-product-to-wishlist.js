@@ -24,6 +24,7 @@ export async function addProductToWishlist(page, options = {}) {
     // Click the "Add to wishlist" button to create a new wishlist and generate share token
     const addButton = page.getByRole('button', { name: addButtonName });
     await addButton.waitFor({ state: 'visible' });
+        await addButton.scrollIntoViewIfNeeded();
     await addButton.click();
 
 }

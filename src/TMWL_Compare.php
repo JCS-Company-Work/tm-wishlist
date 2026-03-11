@@ -152,8 +152,11 @@
                     $list_name = $list['list_name'];
                     echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">';
                     echo $this->openCloseActive();
-                    echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($list_name) . '</h3><button type="button" class="edit-list-name" aria-label="Edit list name">edit</button></div>';
-
+                    echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($list_name) . '</h3>';
+                    if ($user_token && isset($_COOKIE['tm_wishlist_user_token']) && $_COOKIE['tm_wishlist_user_token'] === $user_token) {
+                        echo '<button type="button" class="edit-list-name" aria-label="Edit list name"><i class="fa-light fa-pen"></i></button>';
+                    }
+                    echo '</div>';
                     // If no items in this list, show message, control buttons, close wrapper, and skip to next list
                     if (empty($products) || !is_array($products)) {
                         echo '<div class="tm-compare-list tm-compare-list-multi">';
@@ -192,17 +195,14 @@
                             <?php if ( ! empty( $item['model'] ) ) : ?>
                                 <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
                             <?php endif; ?>
-                            <i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
-                                data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>
+                            <!--<i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
+                                data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>-->
                             <span 
                                 class="remove-from-compare" 
                                 data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
                                 data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>">
-                                <!-- SVG Cross Icon -->
-                                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                                    <line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" stroke-width="2"/>
-                                    <line x1="13" y1="3" x2="3" y2="13" stroke="currentColor" stroke-width="2"/>
-                                </svg>
+                                
+                                
                             </span>
                         </div>
                         <?php
@@ -265,8 +265,12 @@
 
                 echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token_param) . '">';
 
-                    echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($row['list_name']) . '</h3><button type="button" class="edit-list-name" aria-label="Edit list name">edit</button></div>';
-                    
+                    echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($row['list_name']) . '</h3>';
+                    if ($row['is_owner']) {
+                        echo '<button type="button" class="edit-list-name" aria-label="Edit list name"><i class="fa-light fa-pen"></i></button>';
+                    }
+                    echo '</div>';                
+
                     echo '<div class="tm-compare-list tm-compare-grid">';
 
                         // Loop through products and display details
@@ -300,17 +304,14 @@
                                     <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
                                 <?php endif; ?>
                                 <?php if ( $row['is_owner'] ) : ?>
-                                    <i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
-                                        data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>
+                                    <!--<i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
+                                        data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>-->
                                     <span 
                                         class="remove-from-compare" 
                                         data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
                                         data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>">
                                         <!-- SVG Cross Icon -->
-                                        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                                            <line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" stroke-width="2"/>
-                                            <line x1="13" y1="3" x2="3" y2="13" stroke="currentColor" stroke-width="2"/>
-                                        </svg>
+                                        
                                     </span>
                                 <?php endif; ?>
                             </div>
@@ -343,7 +344,7 @@
         public function activeWishlistControls($type, $active_list_name) {
 
             $active_list_html = !empty($active_list_name)
-                ? '<p class="active-list-name">Active Wishlist: </p><span class="active-list-span button">' . esc_html($active_list_name) . '</span>'
+                ? '<p class="active-list-name">Active list: </p><span class="active-list-span">' . esc_html($active_list_name) . '</span>'
                 : '';
 
             // Build buttons HTML based on type (single-list or multi-list)
@@ -405,19 +406,19 @@
 
             $buttonData = [
                 'share_wishllist' => [
-                    'label' => 'Share Wishlist',
+                    'label' => 'Share',
                     'action' => 'share_wishlist',
                 ],
                 'clear_wishlist' => [
-                    'label' => 'Clear Wishlist',
+                    'label' => 'Clear',
                     'action' => 'clear_wishlist',
                 ],
                 'delete_list_all' => [
-                    'label' => 'Delete List (ALL)',
+                    'label' => 'Delete',
                     'action' => 'delete_list_all',
                 ],
                 'delete_list_me' => [
-                    'label' => 'Delete List (ME)',
+                    'label' => 'Remove From My Lists',
                     'action' => 'delete_list_me',
                 ],
             ];
@@ -447,7 +448,7 @@
         public function openCloseActive( $status = ''){
 
             // This function returns HTML for the open/close toggle and active indicator for compare lists
-            return '<div class="list-controls"><span class="list-active">&#10003;</span><span class="list-toggle ' . $status . '"></span></div>';
+            return '<div class="list-controls"><span class="wish-switch list-active"><span class="wish-slider"></span></span><span class="list-toggle ' . $status . '"></span></div>';
 
         }
 

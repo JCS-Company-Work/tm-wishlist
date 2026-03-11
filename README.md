@@ -64,7 +64,9 @@ A modern, multi-list wishlist plugin for WordPress/WooCommerce, supporting both 
 - Automatic data recovery: If localStorage configs are missing, the plugin fetches and restores all user lists from the server for seamless recovery.
 - Improved localStorage initialization: New wishlists are always initialized as empty arrays keyed by share token, even when recovering from server.
 - Robust active list promotion: When deleting the active list, the next available list is automatically promoted as active in both UI and localStorage/cookie.
-- All developer notes and inline comments are retained for maintainability and clarity.
+- New list creation now uses localStorage flags for cross-page logic after redirect, preventing duplicate DOM insertion.
+- Empty message always shown as a <p> tag when lists are empty.
+- Inline comments and developer notes updated for maintainability and clarity.
 - Minor bug fixes and code formatting improvements in JS wishlist logic.
 
 ## Developer Notes

@@ -56,7 +56,7 @@
             if ( ! $product ) return;
 
             printf(
-                '<a href="/wishlist" id="view-wishlist" class="btn btn-outline-secondary btn-sm button level-02" data-product-id="%d" role="button" aria-pressed="false">%s</a>',
+                '<a href="/wishlist" id="view-wishlist" class="wishlist btn btn-outline-secondary btn-sm button level-02" data-product-id="%d" role="button" aria-pressed="false">%s</a>',
                 absint( $product->get_id() ),
                 esc_html__( 'View Wishlist', 'tm-product-compare' )
             );

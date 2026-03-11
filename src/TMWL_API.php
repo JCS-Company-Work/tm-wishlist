@@ -165,8 +165,10 @@
 
             $list_html = '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">' .
                 $list_toggle_controls .
-                '<h3 class="tm-compare-list-name">' . esc_html($new_list_name) . '</h3>' .
-                '<div class="tm-compare-list tm-compare-grid tm-compare-list-multi open"><p>Your wishlist is empty. To start, view our products pages.</p></div>' .
+                '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($new_list_name) . '</h3>' .
+                ($user_token && isset($_COOKIE['tm_wishlist_user_token']) && $_COOKIE['tm_wishlist_user_token'] === $user_token ? '<button type="button" class="edit-list-name" aria-label="Edit list name"><i class="fa-light fa-pen"></i></button>' : '') .
+                '</div>' .
+                '<div class="tm-compare-list tm-compare-grid tm-compare-list-multi open"><p>Your wishlist is empty. Add items from the product pages.</p></div>' .
                 $buttons_html .
                 '</div>';
 

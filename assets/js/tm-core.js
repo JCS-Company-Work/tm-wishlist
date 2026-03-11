@@ -71,15 +71,16 @@ console.log('Clearing wishlist data from localStorage');
 /**
  * Update wishlist links in the DOM with share token
  */
-const updateWishlistLinks = () => {
+const updateWishlistLinks = (shareToken) => {
 
-    // Get share token from local storage
-    const token = localStorage.getItem('tm_wishlist_share_token');
-    console.log('Updating wishlist links with token:', token);
+    // Use provided share token or fallback to local storage
+    const token = shareToken || localStorage.getItem('tm_wishlist_share_token');
+    
     // Update all wishlist links except #manage_lists
     if (token) {
-        document.querySelectorAll('a[href="/wishlist"]')
+        document.querySelectorAll('a[href*="/wishlist"]')
             .forEach(link => {
+                console.log(link);
                 if (link.id !== 'manage_lists') {
                     link.href = `/wishlist/share/${token}/`;
                 }

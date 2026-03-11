@@ -240,6 +240,9 @@ class TMCompare {
                 // Re-bind event listeners for the active icon for the new list
                 this.updateActiveList();
 
+                // Re-bind event listeners for the edit list name button for the new list
+                this.updateListName();
+
                 // Re-bind control button listeners for the new list
                 this.addRemoveBtnListeners();
 
@@ -485,6 +488,9 @@ class TMCompare {
 
                         // Update active list title
                         this.updateActiveListTitle(newTitle);
+
+                        // Update wishlist links with new share token
+                        updateWishlistLinks(shareToken);
 
                     }
 
@@ -963,6 +969,11 @@ class TMCompare {
                     // Prevent default button behavior
                     e.preventDefault();
 
+                    // On mobile, also add a class to the parent element to adjust styling for the edit mode
+                    if (window.innerWidth <= 768) {
+                        btn.parentElement.classList.add('column');
+                    }
+
                     // Close any open edit inputs before opening a new one
                     this.closeAllEditInputs();
 
@@ -1103,8 +1114,15 @@ class TMCompare {
         // Set class name for styling
         newEditLink.className = 'edit-list-name';
 
-        // Set button text content
-        newEditLink.textContent = 'edit';
+        // Add pencil icon to edit button
+        const pencilIcon = document.createElement('icon');
+        pencilIcon.className = 'fa-light fa-pen';
+        newEditLink.appendChild(pencilIcon);
+
+        // On mobile, also add a class to the parent element to adjust styling for the edit mode
+        if (window.innerWidth <= 768) {
+            header.classList.remove('column');
+        }
 
         // Replace header content with the new list name element and edit button
         header.replaceChildren(newListNameEl, newEditLink);
