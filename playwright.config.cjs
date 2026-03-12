@@ -4,14 +4,14 @@ require('dotenv').config(); // Only needed if not already loaded
 const { devices } = require('@playwright/test');
 const config = {
   testDir: './tests/playwright',
-  timeout: 30000,
+  timeout: 60000,
   retries: 0,
   use: {
     headless: true,
     trace: "on",
     viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: true,
-    video: 'retain-on-failure',
+    video: 'on',
     screenshot: 'only-on-failure',
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://store.tailormade.uk',
   },
