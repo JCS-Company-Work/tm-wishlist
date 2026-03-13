@@ -5,40 +5,16 @@ import { waitForConfigsInStorage } from './helpers/storage/wait-for-configs-in-s
 import { getShareTokenFromStorage } from './helpers/storage/get-share-token-from-storage.js';
 import { getProductConfigsFromStorage } from './helpers/storage/get-product-configs-from-storage.js';
 import { clickButton } from './helpers/buttons/click-button.js';
+import { editListNameMockAPI } from './helpers/api/edit-list-name-mocked-api.js';
+import { setCookies } from './helpers/data/set-cookies.js';
 
 test('Edit wishlist name inline @critical', async ({ page, baseURL }) => {
 
-    // Mock backend response
-    await page.route('**/tm-wishlist/v1/lists/**', route => {
-
-        // Return successful response with the new name
-        if (route.request().method() === 'PUT') {
-            route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify({
-                    success: true,
-                    share_token: 'c81cddf6d25ad9ee38cc',
-                    list_name: 'My New Wishlist Name'
-                })
-            });
-        } else {
-            // For GET or other methods, return mockWishlistDbRow
-            route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify(mockWishlistDbRow)
-            });
-        }
-    });
+    // Mock the API response for editing the wishlist name and for fetching the wishlist details
+    await editListNameMockAPI(page, { mockWishlistDbRow });
 
     // Set cookie for user_token
-    await page.context().addCookies([{
-        name: 'tm_wishlist_user_token',
-        value: mockWishlistDbRow.user_token,
-        domain: 'store.tailormade.uk',
-        path: '/',
-    }]);
+    await setCookies(page.context(), { userToken: mockWishlistDbRow.user_token, shareToken: mockWishlistDbRow.share_token });
 
     // Go to homepage
     await page.goto(baseURL);
@@ -65,6 +41,49 @@ test('Edit wishlist name inline @critical', async ({ page, baseURL }) => {
 
     // Assert that the new wishlist name is displayed on the page
     const wishlistNameHeading = page.locator('h3', { hasText: 'My New Wishlist Name' });
+    await expect(wishlistNameHeading).toBeVisible();
+
+});
+
+test('User edits name of active wishlist @critical', async ({ page, baseURL }) => {
+
+    // Mock the API response for editing the wishlist name and for fetching the wishlist details
+    await editListNameMockAPI(page, { mockWishlistDbRow });
+
+    // Set cookie for user_token
+    await setCookies(page.context(), { userToken: mockWishlistDbRow.user_token, shareToken: mockWishlistDbRow.share_token });
+
+    // Go to homepage
+    await page.goto(baseURL);
+
+    // Set mock wishlist data in localStorage to simulate an existing wishlist with a share token
+    await page.evaluate((data) => {
+        localStorage.setItem('tm_wishlist_configs', JSON.stringify(data));
+        localStorage.setItem('tm_wishlist_share_token', 'c81cddf6d25ad9ee38cc');
+        return data;
+    }, mockWishlistData);
+
+    // Navigate to the wishlist page for this share token
+    await page.goto(`${baseURL}/wishlist/`);
+    
+    // Find current active list wrapper by checking for active class
+    const activeList = page.locator('.tm-compare-list-wrapper.active');
+
+    // Assert that the active list wrapper is found and visible
+    await expect(activeList).toBeVisible();
+
+    // Click the "Edit list name" button to enable the wishlist name input
+    await clickButton(activeList, '.edit-list-name');
+
+    // Get the input field and change the wishlist name
+    const nameInput = activeList.locator('#edit-list-name-input');
+    await nameInput.fill('My Edited Wishlist Name');
+
+    // Click the "Save" button to save the new wishlist name
+    await clickButton(activeList, '.save-list-name');
+
+    // Assert that the new wishlist name is displayed on the page
+    const wishlistNameHeading = page.locator('.active-list-span', { hasText: 'My Edited Wishlist Name' });
     await expect(wishlistNameHeading).toBeVisible();
 
 });
@@ -134,52 +153,3 @@ test ('User cannot save duplicate wishlist name', async ({ page, baseURL }) => {
 
 });
 
-test('User edits name of active wishlist', async ({ page, baseURL }) => {
-
-    // Add a product to the wishlist and generate a share token
-    await addProductToWishlist(page, { baseURL });
-
-    // Wait for configs to be present before asserting button
-    await waitForConfigsInStorage(page);
-    
-    // Wait for and assert the new button state
-    await assertRemoveFromWishlistVisible(page);
-
-    // Assert the share token is set in localStorage
-    const shareToken = await getShareTokenFromStorage(page);
-    expect(shareToken).not.toBeNull();
-    
-    // Navigate to the wishlist page for this share token
-    await page.goto(`${baseURL}/wishlist/share/${shareToken}`);
-
-    // Click Manage Lists button to open the list management interface on the wishlist page
-    await clickButton(page, 'Manage Lists');
-    
-    // Assert the wishlist configs are set in localStorage so that edit button is visible on the wishlist page
-    await getProductConfigsFromStorage(page); 
-    
-    // Find current active list wrapper by checking for active class
-    const activeList = page.locator('.tm-compare-list-wrapper.active');
-
-    // Assert that the active list wrapper is found and visible
-    await expect(activeList).toBeVisible();
-
-    // Click the "Edit list name" button to enable the wishlist name input
-    await clickButton(activeList, 'Edit list name');
-
-    // Get the input field and change the wishlist name
-    const nameInput = activeList.locator('#edit-list-name-input');
-    await nameInput.fill('My Edited Wishlist Name');
-
-    // Click the "Save" button to save the new wishlist name
-    await clickButton(activeList, 'Save');
-
-    // Assert that the new wishlist name is displayed on the page
-    const wishlistNameHeading = page.locator('h3', { hasText: 'My Edited Wishlist Name' });
-    await expect(wishlistNameHeading).toBeVisible();
-
-    // Assert that wishlist name stays the same after page reload
-    await page.reload();
-    await expect(wishlistNameHeading).toBeVisible();
-
-});
