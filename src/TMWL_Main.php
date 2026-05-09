@@ -15,10 +15,10 @@
             add_filter( 'query_vars', [ $this, 'register_query_vars' ] );
 
             // Add "Add To Wishlist" button after the WooCommerce add-to-cart form
-            add_action( 'woocommerce_after_add_to_cart_form', [ $this, 'render_compare_button' ], 10 );
+            add_action( 'tm_buttons_container', [ $this, 'render_compare_button' ], 10 );
             
             // Add "View Wishlist" button after the WooCommerce add-to-cart form
-            add_action( 'woocommerce_after_add_to_cart_form', [ $this, 'render_view_wishlist_button' ], 15 );
+            add_action( 'tm_buttons_container', [ $this, 'render_view_wishlist_button' ], 15 );
         
         }
 

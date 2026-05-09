@@ -524,7 +524,7 @@ class TMAddItems {
         const selectEl = document.querySelector(`.${cssClass} select`);
 
         if (selectEl && selectEl.selectedIndex !== -1) {
-          config[key] = selectEl.options[selectEl.selectedIndex].getAttribute('data-wapf-label');
+          config[key] = selectEl.options[selectEl.selectedIndex].value || '';
         } else {
           config[key] = '';
         }
@@ -536,7 +536,7 @@ class TMAddItems {
         // Extract data-wapf-label and add to config
         if (checkedInput) {
 
-          config[key] = checkedInput.getAttribute('data-wapf-label');
+          config[key] = checkedInput.value || '';
   
         }
 
@@ -544,8 +544,14 @@ class TMAddItems {
 
     });
 
-    // Get visible layered image IDs
-    config.layerIds = this.getLayerIds();
+    // Pass status image to config
+    const statusImage = document.querySelector('.status-image img');
+    if (statusImage) {
+      config.image = statusImage.getAttribute('src') || '';
+    }
+
+    // // Get visible layered image IDs
+    // config.layerIds = this.getLayerIds();
 
     const url = new URL(window.location.href);
     url.searchParams.delete('tvembed');
@@ -554,37 +560,37 @@ class TMAddItems {
     return config;
   }
 
-  /**
-   * Extract IDs of visible layers from the layered image display.
-   * 
-   * @returns 
-   */
-  getLayerIds() {
+  // /**
+  //  * Extract IDs of visible layers from the layered image display.
+  //  * 
+  //  * @returns 
+  //  */
+  // getLayerIds() {
 
-    // Get all checked swatches from DOM
-    const checkedSwatches = document.querySelectorAll('.wapf-checked');
+  //   // Get all checked swatches from DOM
+  //   const checkedSwatches = document.querySelectorAll('.wapf-checked');
 
-    // Map to their data-ids
-    const wapfIds = [...checkedSwatches].map(swatch => swatch.querySelector('input').value);
+  //   // Map to their data-ids
+  //   const wapfIds = [...checkedSwatches].map(swatch => swatch.querySelector('input').value);
 
-    // Get the status image container
-    const statusImage = document.querySelector('.status-image');
+  //   // Get the status image container
+  //   const statusImage = document.querySelector('.status-image');
 
-    // Map wapfIds to layer data-ids
-    const layerIds = wapfIds.map(swatchId => {
+  //   // Map wapfIds to layer data-ids
+  //   const layerIds = wapfIds.map(swatchId => {
 
-      // Find corresponding layer in status image
-      const layer = statusImage.querySelector(`[data-value="${swatchId}"]`);
+  //     // Find corresponding layer in status image
+  //     const layer = statusImage.querySelector(`[data-value="${swatchId}"]`);
 
-      // Return data-id or null
-      return layer ? layer.getAttribute('data-id') : null;
+  //     // Return data-id or null
+  //     return layer ? layer.getAttribute('data-id') : null;
 
-    });
+  //   });
 
-    // Return ids in reverse order to ensure that layered images stack correctly on wishlist page
-    return layerIds.reverse();
+  //   // Return ids in reverse order to ensure that layered images stack correctly on wishlist page
+  //   return layerIds.reverse();
 
-  }
+  // }
 
   /**
    * Extract product ID from a button element.

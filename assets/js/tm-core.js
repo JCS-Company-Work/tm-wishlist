@@ -80,7 +80,6 @@ const updateWishlistLinks = (shareToken) => {
     if (token) {
         document.querySelectorAll('a[href*="/wishlist"]')
             .forEach(link => {
-                console.log(link);
                 if (link.id !== 'manage_lists') {
                     link.href = `/wishlist/share/${token}/`;
                 }

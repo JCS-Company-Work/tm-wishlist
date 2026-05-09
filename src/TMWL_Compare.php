@@ -140,7 +140,7 @@
                 $active_list_name = $this->determineActiveList($render_lists);
 
                 // Render active list controls with active list name
-                echo $this->activeWishlistControls('multi-list', $active_list_name);
+                //echo $this->activeWishlistControls('multi-list', $active_list_name);
 
                 echo '<div class="tm-wishlist-lists">';
 
@@ -257,7 +257,7 @@
             // Render active list controls with active list name is user is list owner
             if($row['is_owner']) {
                 
-                echo $this->activeWishlistControls('single-list', $row['list_name']);
+                //echo $this->activeWishlistControls('single-list', $row['list_name']);
 
             }
 
@@ -276,7 +276,8 @@
                         // Loop through products and display details
                         foreach ( $products as $item ) {
 
-                            $image = self::createLayeredImage( $item['layerIds'], $item['productName'] );
+                            // Create data config key to identify config for removals etc
+                            $config_key = self::generateConfigKey($item);
 
                             // Check if URL has params; if not, build from attributes
                             $url = self::setUrl($item);
@@ -285,23 +286,23 @@
 
                             <div class="tm-compare-item" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>">
                                 <a href="<?php echo esc_url( $url ); ?>">
-                                    <?php echo $image; ?>
+                                    <img src="<?php echo esc_url( $item['image'] ); ?>" alt="<?php echo esc_attr( $item['productName'] ); ?>">
                                     <h2 class="woocommerce-loop-product__title"><?php echo esc_html( $item['productName'] ); ?></h2>
                                 </a>
                                 <?php if ( ! empty( $item['price'] ) ) : ?>
                                     <p class="price"><strong>Price: </strong><?php echo esc_html( $item['price'] ); ?></p>
                                 <?php endif; ?>
                                 <?php if ( ! empty( $item['colour'] ) ) : ?>
-                                    <p class="colour"><strong>Top Colour: </strong><?php echo esc_html( $item['colour'] ); ?></p>
+                                    <p class="colour"><strong>Top Colour: </strong><?php echo esc_html( ucwords($item['colour']) ); ?></p>
                                 <?php endif; ?>
                                 <?php if ( ! empty( $item['base'] ) ) : ?>
-                                    <p class="base"><strong>Base: </strong><?php echo esc_html( $item['base'] ); ?></p>
+                                    <p class="base"><strong>Base: </strong><?php echo esc_html( ucwords($item['base']) ); ?></p>
                                 <?php endif; ?>
                                 <?php if ( ! empty( $item['veneer'] ) ) : ?>
-                                    <p class="veneer"><strong>Metal Edge Veneer: </strong><?php echo esc_html( $item['veneer'] ); ?></p>
+                                    <p class="veneer"><strong>Metal Edge Veneer: </strong><?php echo esc_html( ucwords($item['veneer']) ); ?></p>
                                 <?php endif; ?>
                                 <?php if ( ! empty( $item['model'] ) ) : ?>
-                                    <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
+                                    <p class="model"><strong>Model: </strong><?php echo esc_html( ucwords($item['model']) ); ?></p>
                                 <?php endif; ?>
                                 <?php if ( $row['is_owner'] ) : ?>
                                     <!--<i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
@@ -309,9 +310,7 @@
                                     <span 
                                         class="remove-from-compare" 
                                         data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
-                                        data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>">
-                                        <!-- SVG Cross Icon -->
-                                        
+                                        data-config-key="<?php echo esc_attr( $config_key ); ?>">
                                     </span>
                                 <?php endif; ?>
                             </div>
@@ -331,6 +330,26 @@
             echo '</div>';
 
             return ob_get_clean();
+
+        }
+
+        /**
+         * Gneerate config key
+         *
+         * @param array $item
+         * @return void
+         */
+        public static function generateConfigKey($item) {
+
+            $data_config_key = implode('|', [
+                $item['product_id'],
+                $item['base'] ?? '',
+                $item['colour'] ?? '',
+                $item['veneer'] ?? '',
+                $item['model'] ?? ''
+            ]);
+
+            return $data_config_key;
 
         }
 

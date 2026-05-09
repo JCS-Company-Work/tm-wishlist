@@ -655,23 +655,25 @@ class TMCompare {
         //Get configs for this user and list
         let configs = (allUserLists[userToken] && allUserLists[userToken][shareToken]) ? allUserLists[userToken][shareToken] : [];
 
-        // Get layers IDs from data attribute
-        const idsArr = btn.getAttribute('data-layers-ids').split(',') || [];
+        // Extract item key from button data attribute to identify which item to remove from configs
+        const key = btn.getAttribute('data-config-key');
 
-        // Remove matching config (match all layerIds)
-        configs = configs.filter(item => {
+        // Destructure the key to get individual config values for comparison
+        const [product_id, base, colour, veneer, model] = key.split('|');
+        
+        // Find the index of the item in the configs that matches the extracted config values
+        const index = configs.findIndex(cfg =>
+            cfg.product_id === product_id &&
+            cfg.base === base &&
+            cfg.colour === colour &&
+            (cfg.veneer || '') === veneer &&
+            cfg.model === model
+        );
 
-            // If item does not have layerIds, keep it (should not happen but just in case)
-            if (!Array.isArray(item.layerIds)) return true;
-
-            // Only remove if every id in item.layerIds is in idsArr and lengths match
-            const itemIds = item.layerIds.map(String).filter(Boolean);
-            const idsArrFiltered = idsArr.filter(Boolean);
-
-            // Keep the item if the lengths don't match or if not every id in item.layerIds is included in idsArr
-            return !(itemIds.length === idsArrFiltered.length && itemIds.every(id => idsArrFiltered.includes(id)));
-
-        });
+        // If the item was found in the configs, remove it
+        if (index !== -1) {
+            configs.splice(index, 1);
+        }
 
         // Ensure user token level is an object
         if (!allUserLists[userToken]) allUserLists[userToken] = {};
