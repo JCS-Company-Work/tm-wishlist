@@ -19,7 +19,7 @@ class TMCompare {
         this.nonce = window.TMWLSettings?.nonce || null;
 
         // Empty wishlist message for reuse
-        this.EMPTY_MESSAGE = '<p>Your wishlist is empty. To start, view our products pages.</p>';
+        this.EMPTY_MESSAGE = '<p>Your designs list is empty. To start, view our products pages.</p>';
 
         // Initialize properties
         this.init();
@@ -895,7 +895,7 @@ class TMCompare {
         if (navigator.share) {
 
             // Extract list name for sharing title
-            const listName = shareBtn.closest('.tm-compare-list-wrapper').querySelector('.tm-compare-list-name').textContent || 'My Wishlist';
+            const listName = shareBtn.closest('.tm-compare-list-wrapper').querySelector('.tm-compare-list-name').textContent || 'Designs List';
 
             // Use Web Share API to share the URL with the list name as title
             navigator.share({

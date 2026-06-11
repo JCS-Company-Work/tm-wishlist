@@ -25,6 +25,9 @@ class TMAddItems {
     // Add isSyncing property
     this.isSyncing = false;
 
+    // Keep track of pending spinner timeout to avoid overlapping removals.
+    this.buttonSpinnerTimer = null;
+
     // Mapping of config keys to CSS classes
     this.configKeyMap = {
       colour: 'obj-top-colour',
@@ -73,7 +76,6 @@ class TMAddItems {
 
         // Determine if we're adding or removing based on current state
         const isCurrentlyAdded = button.getAttribute('aria-pressed') === 'true';
-
         // Get product ID and either add or remove config based on current state
         const productId = this.getProductId(button);
 
@@ -166,14 +168,26 @@ class TMAddItems {
     // Ensure button is valid
     if (!button) return;
 
+    // Add spinner class to button
+    button.classList.add('button-spinner');
+
     // Toggle styles and attributes
     button.classList.toggle('reverse-btn', !!isAdded);
 
     // Set aria-pressed attribute
     button.setAttribute('aria-pressed', isAdded ? 'true' : 'false');
 
+    // Remove spinner class after a short delay so the loading state is visible.
+    if (this.buttonSpinnerTimer) {
+      clearTimeout(this.buttonSpinnerTimer);
+    }
+    this.buttonSpinnerTimer = setTimeout(() => {
+      button.classList.remove('button-spinner');
+      this.buttonSpinnerTimer = null;
+    }, 350);
+
     // Update button text
-    button.textContent = isAdded ? 'Remove from wishlist' : 'Add to wishlist';
+    button.textContent = isAdded ? 'Remove Your Design' : 'Save Your Design';
 
   }
 
@@ -560,38 +574,6 @@ class TMAddItems {
     return config;
   }
 
-  // /**
-  //  * Extract IDs of visible layers from the layered image display.
-  //  * 
-  //  * @returns 
-  //  */
-  // getLayerIds() {
-
-  //   // Get all checked swatches from DOM
-  //   const checkedSwatches = document.querySelectorAll('.wapf-checked');
-
-  //   // Map to their data-ids
-  //   const wapfIds = [...checkedSwatches].map(swatch => swatch.querySelector('input').value);
-
-  //   // Get the status image container
-  //   const statusImage = document.querySelector('.status-image');
-
-  //   // Map wapfIds to layer data-ids
-  //   const layerIds = wapfIds.map(swatchId => {
-
-  //     // Find corresponding layer in status image
-  //     const layer = statusImage.querySelector(`[data-value="${swatchId}"]`);
-
-  //     // Return data-id or null
-  //     return layer ? layer.getAttribute('data-id') : null;
-
-  //   });
-
-  //   // Return ids in reverse order to ensure that layered images stack correctly on wishlist page
-  //   return layerIds.reverse();
-
-  // }
-
   /**
    * Extract product ID from a button element.
    * 
@@ -654,9 +636,10 @@ class TMAddItems {
     // Check each key
     for (let key of keysA) {
 
-      // Skip url check as we can have a default configuration created by user navigation
-      // which means params are included in the url and will differ from default
-      if(key !== 'url') {
+      // Skip volatile fields:
+      // - url: params may differ due navigation/default routes
+      // - image: status image can lag behind selection due async composite updates
+      if (key !== 'url' && key !== 'image') {
 
         // Get values
         const a = configA[key];
@@ -738,11 +721,11 @@ class TMAddItems {
 
     // Ensure product ID is present
     if (!productId) return;
-    
+
     // Get current saved configs
     const priceEl = document.querySelector('.status-price');
     const price = priceEl ? priceEl.textContent.trim() : '';
-    const productNameEl = document.querySelector('.product-model-title');
+    const productNameEl = document.querySelector('.product-title');
     const productName = productNameEl ? productNameEl.textContent.trim() : '';
 
     // Get current saved configs for user
@@ -779,7 +762,7 @@ class TMAddItems {
     if (button) this.setButtonState(button, true);
 
     // Update status text
-    this.statusText('Product added to wishlist.');
+    //this.statusText('Product added to wishlist.');
 
   }
 
@@ -807,18 +790,19 @@ class TMAddItems {
       savedConfigs.splice(match, 1);
       // Save updated list
       this.saveConfigs(savedConfigs);
+
       // Update button state after successful remove
       if (button) this.setButtonState(button, false);
+
     }
     // Update status text
-    this.statusText('Product removed from wishlist.');
+    //this.statusText('Product removed from wishlist.');
 
   }
 
   /************ UI Updates ************/
 
   /**
-   * 
    * Display a temporary status message in the wishlist status element.
    * 
    * @param {string} message 

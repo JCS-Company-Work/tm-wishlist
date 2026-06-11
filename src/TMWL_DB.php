@@ -40,7 +40,7 @@
             $sql = "CREATE TABLE {$table_name} (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 user_id BIGINT UNSIGNED DEFAULT NULL,
-                list_name VARCHAR(64) DEFAULT 'My Wishlist',
+                list_name VARCHAR(64) DEFAULT 'My Designs List',
                 user_token VARCHAR(36) DEFAULT NULL,
                 share_token VARCHAR(64) DEFAULT NULL,
                 data LONGTEXT NOT NULL,

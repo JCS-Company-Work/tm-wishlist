@@ -191,7 +191,7 @@
         public function unique_list_name($wpdb, $user_token, $table_name) {
 
             // Set a default base name for list
-            $base_name = 'My Wishlist';
+            $base_name = 'Designs List';
 
             // Get existing list names for this user that start with the base name
             $existing_names = $wpdb->get_col(
@@ -208,7 +208,7 @@
             // Loop through existing names to find the highest number suffix
             foreach ($existing_names as $name) {
 
-                // Use regex to match names like "My Wishlist #2" and extract the number
+                // Use regex to match names like "Designs List #2" and extract the number
                 if (preg_match('/^' . preg_quote($base_name, '/') . ' #(\d+)$/', $name, $matches)) {
                     $num = intval($matches[1]);
 

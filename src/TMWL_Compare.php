@@ -7,7 +7,7 @@
     class TMWL_Compare {
 
         // Variable to hold empty message for reuse
-        private $empty_message = '<p>Your wishlist is empty. To start, view our products pages.</p>';
+        private $empty_message = '<p>Your designs list is empty. To start, view our products pages.</p>';
         
         public function __construct() {
 
@@ -140,7 +140,7 @@
                 $active_list_name = $this->determineActiveList($render_lists);
 
                 // Render active list controls with active list name
-                //echo $this->activeWishlistControls('multi-list', $active_list_name);
+                echo $this->activeWishlistControls('multi-list', $active_list_name);
 
                 echo '<div class="tm-wishlist-lists">';
 
@@ -172,12 +172,11 @@
 
                     echo '<div class="tm-compare-list tm-compare-grid tm-compare-list-multi">';
                     foreach ($products as $item) {
-                        $image = self::createLayeredImage( $item['layerIds'], $item['productName'] );
                         $url = self::setUrl($item);
                         ?>
                         <div class="tm-compare-item" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>">
                             <a href="<?php echo esc_url( $url ); ?>">
-                                <?php echo $image; ?>
+                                <img src="<?php echo esc_url( $item['image'] ); ?>" alt="<?php echo esc_attr( $item['productName'] ); ?>">
                                 <h2 class="woocommerce-loop-product__title"><?php echo esc_html( $item['productName'] ); ?></h2>
                             </a>
                             <?php if ( ! empty( $item['price'] ) ) : ?>
@@ -249,15 +248,15 @@
             // Render comparison table
             ob_start();
 
-            // If user is not owner, show message about view only wishlist
+            // If user is not owner, show message about view only design list
             if(!$row['is_owner']) {
-                echo '<p>This is a view only wishlist. To create your own wishlist, please add products from the product pages.</p>';
+                echo '<p>This is a view only designs list. To create your own designs list, please add products from the product pages.</p>';
             }
 
             // Render active list controls with active list name is user is list owner
             if($row['is_owner']) {
                 
-                //echo $this->activeWishlistControls('single-list', $row['list_name']);
+                echo $this->activeWishlistControls('single-list', $row['list_name']);
 
             }
 
@@ -358,7 +357,7 @@
          *
          * @param string $type
          * @param string $active_list_name
-         * @return void
+         * @return string
          */
         public function activeWishlistControls($type, $active_list_name) {
 
@@ -508,60 +507,6 @@
             // Return the final URL
             return $url;
 
-        }
-
-        public static function createLayeredImage( $layerIds, $productName ) {
-        
-            // Validate ids array
-            if ( ! is_array( $layerIds ) || empty( $layerIds ) ) {
-                return ''; // or a placeholder markup if preferred
-            }
-
-            // Filter and sanitize IDs
-            $ids = array_values( array_filter( array_map( 'absint', $layerIds ), function( $id ) {
-                return $id && wp_attachment_is_image( $id );
-            } ) );
-
-            // Check if we have any valid IDs
-            if ( empty( $ids ) ) {
-                return '';
-            }
-
-            // Get base image and set up HTML
-            $baseId   = array_shift( $ids );
-            $baseImg  = wp_get_attachment_image(
-                $baseId,
-                'large',
-                false,
-                [
-                    'class'         => 'wapf-layer-image wapf-layer-base',
-                    'alt'           => esc_attr( $productName ),
-                    'loading'       => 'eager',
-                    'decoding'      => 'async',
-                    'fetchpriority' => 'high',
-                ]
-            );
-
-            ob_start();
-            ?>
-            <div class="wapf-layer-images" aria-hidden="true">
-                <?php echo $baseImg; ?>
-                <?php foreach ( $ids as $overlayId ) : ?>
-                    <?php echo wp_get_attachment_image(
-                        $overlayId,
-                        'large',
-                        false,
-                        [
-                            'class'    => 'wapf-layer-image wapf-layer-overlay',
-                            'alt'      => '',
-                            'loading'  => 'lazy',
-                            'decoding' => 'async',
-                        ]
-                    ); ?>
-                <?php endforeach; ?>
-            </div>
-            <?php
-            return ob_get_clean();
         }
 
     }
