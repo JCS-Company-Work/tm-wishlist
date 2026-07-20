@@ -567,7 +567,8 @@ class TMAddItems {
     // // Get visible layered image IDs
     // config.layerIds = this.getLayerIds();
 
-    const url = new URL(window.location.href);
+    const configuredProductUrl = document.querySelector('form.cart')?.action || window.location.href;
+    const url = new URL(configuredProductUrl);
     url.searchParams.delete('tvembed');
     config.url = url.toString();
 
@@ -725,7 +726,7 @@ class TMAddItems {
     // Get current saved configs
     const priceEl = document.querySelector('.status-price');
     const price = priceEl ? priceEl.textContent.trim() : '';
-    const productNameEl = document.querySelector('.product-title');
+    const productNameEl = document.querySelector('.status-title');
     const productName = productNameEl ? productNameEl.textContent.trim() : '';
 
     // Get current saved configs for user
