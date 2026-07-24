@@ -258,14 +258,6 @@
                 $incoming_user_token = sanitize_text_field($_COOKIE['tm_wishlist_user_token']);
             }
 
-            // If still no user token, generate a new one (this allows saving without a pre-existing token, but will create a new user token for them)
-            if (empty($incoming_user_token)) {
-
-                // Generate a new user token
-                $incoming_user_token = 'user-' . substr(str_shuffle('abcdefghijklmnopqrstuvwxyz0123456789'), 0, 8);
-
-            }
-
             // If no share token in request, check cookie for existing token
             if (empty($incoming_share_token) && isset($_COOKIE['tm_wishlist_share_token'])) {
                 $incoming_share_token = sanitize_text_field($_COOKIE['tm_wishlist_share_token']);
@@ -275,6 +267,16 @@
             $row = $wpdb->get_row(
                 $wpdb->prepare("SELECT * FROM {$table_name} WHERE share_token = %s LIMIT 1", $incoming_share_token)
             );
+
+            // For existing lists, preserve row ownership if request has no stable user token.
+            if (empty($incoming_user_token) && $row && !empty($row->user_token)) {
+                $incoming_user_token = sanitize_text_field($row->user_token);
+            }
+
+            // If still no token (new list or missing row token), generate one.
+            if (empty($incoming_user_token)) {
+                $incoming_user_token = 'user-' . substr(str_shuffle('abcdefghijklmnopqrstuvwxyz0123456789'), 0, 8);
+            }
 
             // Ownership check: only allow edit if share_token matches
             if ($row && $row->share_token !== $incoming_share_token) {
