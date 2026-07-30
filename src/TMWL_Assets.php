@@ -41,12 +41,32 @@
             // Retrieve share token
             $share_token = isset($_COOKIE['tm_wishlist_share_token']) ? sanitize_text_field($_COOKIE['tm_wishlist_share_token']) : "";
 
+            // Allow a deployment to define a stable showroom token for iframe-based showroom screens.
+            $showroom_user_token = '';
+            if ( defined( 'TM_WISHLIST_SHOWROOM_USER_TOKEN' ) ) {
+                $showroom_user_token = sanitize_text_field( constant( 'TM_WISHLIST_SHOWROOM_USER_TOKEN' ) );
+            }
+            $showroom_user_token = sanitize_text_field(
+                apply_filters( 'tm_wishlist_showroom_user_token', $showroom_user_token )
+            );
+
+            // Optional origin allowlist for the parent showroom frame.
+            $showroom_parent_origin = '';
+            if ( defined( 'TM_WISHLIST_SHOWROOM_PARENT_ORIGIN' ) ) {
+                $showroom_parent_origin = esc_url_raw( constant( 'TM_WISHLIST_SHOWROOM_PARENT_ORIGIN' ) );
+            }
+            $showroom_parent_origin = esc_url_raw(
+                apply_filters( 'tm_wishlist_showroom_parent_origin', $showroom_parent_origin )
+            );
+
             // Localize core script
             wp_localize_script( 'tm-core-js', 'TMWLSettings', [
                 'rest_save_url' => esc_url_raw( rest_url( 'tm-wishlist/v1/lists' ) ),
                 'rest_get_url'  => esc_url_raw( rest_url( 'tm-wishlist/v1/lists' ) ),
                 'user_token'    => esc_url_raw( rest_url( 'tm-wishlist/v1/user-token' ) ),
                 'share_token'   => $share_token,
+                'showroom_user_token' => $showroom_user_token,
+                'showroom_parent_origin' => $showroom_parent_origin,
                 'nonce'         => wp_create_nonce( 'wp_rest' ),
                 'max_items'     => 6,
                 'storage_key'   => 'tm_wishlist_configs',

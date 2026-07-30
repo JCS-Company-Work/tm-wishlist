@@ -25,6 +25,12 @@ class TMAddItems {
     // Add isSyncing property
     this.isSyncing = false;
 
+    // Track the active user token so iframe showrooms can reuse a stable identity.
+    this.userToken = getWishlistUserToken();
+    this.isIframe = window.self !== window.top;
+    this.waitingForShowroomToken = false;
+    this.showroomMessageHandler = null;
+
     // Keep track of pending spinner timeout to avoid overlapping removals.
     this.buttonSpinnerTimer = null;
 
@@ -52,9 +58,97 @@ class TMAddItems {
     // Add listener to add/remove buttons
     this.activateButtons();
 
+    // Listen for a parent showroom token before any wishlist requests run.
+    this.setupUserTokenBridge();
+
     // Seed from server if applicable
-    this.seedFromServer();
+    if (this.getUserToken()) {
+      this.seedFromServer();
+    } else if (!this.isIframe) {
+      this.seedFromServer();
+    } else {
+      this.waitingForShowroomToken = true;
+      this.requestShowroomToken();
+    }
       
+  }
+
+  /**
+   * Return the currently active user token, preferring any bridged showroom value.
+   * @returns {string|null}
+   */
+  getUserToken() {
+    return this.userToken || getWishlistUserToken();
+  }
+
+  /**
+   * Persist a user token for the current origin and keep the instance state aligned.
+   * @param {string} token
+   * @param {{ persistCookie?: boolean, sameSite?: 'Lax' | 'None', secure?: boolean }} [options]
+   */
+  setUserToken(token, options = {}) {
+    if (!token) return;
+
+    this.userToken = token;
+    setWishlistUserToken(token, options);
+  }
+
+  /**
+   * Listen for a parent showroom token and seed the list once it arrives.
+   */
+  setupUserTokenBridge() {
+
+    if (!this.isIframe || this.showroomMessageHandler) {
+      return;
+    }
+
+    const allowedOrigin = window.TMWLSettings?.showroom_parent_origin || null;
+
+    this.showroomMessageHandler = (event) => {
+
+      if (allowedOrigin && event.origin !== allowedOrigin) {
+        return;
+      }
+
+      if (event.source !== window.parent) {
+        return;
+      }
+
+      const data = event.data;
+      if (!data || data.type !== 'tm-showroom-user') {
+        return;
+      }
+
+      const token = data.showroom || data.user_token || null;
+      if (!token) {
+        return;
+      }
+
+      console.info('[tm-wishlist] received showroom user token from parent');
+      this.setUserToken(token, { persistCookie: true, sameSite: 'None', secure: true });
+      this.waitingForShowroomToken = false;
+      this.seedFromServer();
+    };
+
+    window.addEventListener('message', this.showroomMessageHandler);
+  }
+
+  /**
+   * Ask the parent page to send the showroom token again.
+   */
+  requestShowroomToken() {
+
+    if (!this.isIframe) {
+      return;
+    }
+
+    console.info('[tm-wishlist] requesting showroom user token from parent');
+
+    window.parent.postMessage(
+      { type: 'tm-showroom-request-user' },
+      window.TMWLSettings?.showroom_parent_origin || '*'
+    );
+
   }
 
   /************ Event Wiring ************/
@@ -200,10 +294,13 @@ class TMAddItems {
   async saveConfigs(configs) {
 
     // Check cookies for user token
-    let userToken = getCookie('tm_wishlist_user_token');
+    let userToken = this.getUserToken();
 
     // If not present in cookies, generate a new one
     if (!userToken) {
+
+      if (this.waitingForShowroomToken) return;
+
       userToken = await this.generateUserToken();
     }
 
@@ -337,6 +434,11 @@ class TMAddItems {
    */
   async generateUserToken() {
 
+    const existingToken = this.getUserToken();
+    if (existingToken) {
+      return existingToken;
+    }
+
     // If no user token URL is configured, log an error and return null
     if (!this.USER_TOKEN_URL) {
       console.error('User token URL is not configured.');
@@ -358,7 +460,7 @@ class TMAddItems {
       // If user token is returned, set it in cookies and return
       if (data?.user_token) {
 
-        document.cookie = `tm_wishlist_user_token=${data.user_token}; path=/; SameSite=Lax; max-age=31536000`;
+        this.setUserToken(data.user_token, { persistCookie: true });
         return data.user_token;
 
       }
@@ -384,10 +486,14 @@ class TMAddItems {
   async seedFromServer() {
 
     // Use user token from cookie
-    const userToken = getCookie('tm_wishlist_user_token');
+    const userToken = this.getUserToken();
 
     // If no sync URL or user token, clear local storage and exit
     if (!this.SYNC_GET_URL || !userToken) {
+
+      if (this.waitingForShowroomToken) {
+        return;
+      }
 
       // Attempt to recover user token, if not clear storage to avoid stale data
       await this.recoverUserToken();
@@ -473,7 +579,7 @@ class TMAddItems {
 
       // If user token is found in configs, set it in cookies
       if (userToken) {
-        document.cookie = `tm_wishlist_user_token=${userToken}; path=/; SameSite=Lax; max-age=31536000`;
+        this.setUserToken(userToken, { persistCookie: true });
 
         // Update button state using refactored method
         const button = document.querySelector('.tm-add-to-compare');
@@ -495,7 +601,7 @@ class TMAddItems {
       .then(data => {
         if (data && data.user_token) {
           // Set user token in cookies
-          document.cookie = `tm_wishlist_user_token=${data.user_token}; path=/; SameSite=Lax; max-age=31536000`;
+          this.setUserToken(data.user_token, { persistCookie: true });
           // Update button state using refactored method
           const button = document.querySelector('.tm-add-to-compare');
           if (button && data.data) {

@@ -59,6 +59,19 @@
         }
 
         /**
+         * Check if the current request is from an iframe embed.
+         *
+         * @return bool
+         */
+        private function isShowroomEmbed() {
+            // Check for 'Sec-Fetch-Dest' header to see if the request is coming from an iframe
+            $fetch_dest = isset($_SERVER['HTTP_SEC_FETCH_DEST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_SEC_FETCH_DEST'])) : '';
+
+            return ($fetch_dest === 'iframe');
+
+        }
+
+        /**
          * Helper function to retrieve wishlist data based on share token, used in shortcode rendering
          *
          * @param string $share_token
@@ -113,7 +126,7 @@
                 
                 // Sanitize user token from cookie
                 $user_token = sanitize_text_field($_COOKIE['tm_wishlist_user_token']);
-                
+
                 // Set table name
                 $table_name = TMWL_DB::get_table_name();
                 
@@ -139,8 +152,10 @@
                 // Determine active list based on cookie and available lists
                 $active_list_name = $this->determineActiveList($render_lists);
 
-                // Render active list controls with active list name
-                echo $this->activeWishlistControls('multi-list', $active_list_name);
+                // Render active list controls with active list name (hidden in showroom embeds)
+                if ( ! $this->isShowroomEmbed() ) {
+                    echo $this->activeWishlistControls('multi-list', $active_list_name);
+                }
 
                 echo '<div class="tm-wishlist-lists">';
 
@@ -153,7 +168,7 @@
                     echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">';
                     echo $this->openCloseActive();
                     echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($list_name) . '</h3>';
-                    if ($user_token && isset($_COOKIE['tm_wishlist_user_token']) && $_COOKIE['tm_wishlist_user_token'] === $user_token) {
+                    if ($user_token && isset($_COOKIE['tm_wishlist_user_token']) && $_COOKIE['tm_wishlist_user_token'] === $user_token && ! $this->isShowroomEmbed()) {
                         echo '<button type="button" class="edit-list-name" aria-label="Edit list name"><i class="fa-light fa-pen"></i></button>';
                     }
                     echo '</div>';
@@ -254,7 +269,7 @@
             }
 
             // Render active list controls with active list name is user is list owner
-            if($row['is_owner']) {
+            if($row['is_owner'] && ! $this->isShowroomEmbed()) {
                 
                 echo $this->activeWishlistControls('single-list', $row['list_name']);
 
@@ -265,7 +280,7 @@
                 echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token_param) . '">';
 
                     echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($row['list_name']) . '</h3>';
-                    if ($row['is_owner']) {
+                    if ($row['is_owner'] && ! $this->isShowroomEmbed()) {
                         echo '<button type="button" class="edit-list-name" aria-label="Edit list name"><i class="fa-light fa-pen"></i></button>';
                     }
                     echo '</div>';                
@@ -440,6 +455,11 @@
                     'action' => 'delete_list_me',
                 ],
             ];
+
+            // Hide owner-destructive actions in showroom embeds.
+            if ( $this->isShowroomEmbed() ) {
+                unset($buttonData['delete_list_all'], $buttonData['delete_list_me']);
+            }
 
             // Loop over data and create buttons
             $buttons = array_map(function($button) use($share_token) {
