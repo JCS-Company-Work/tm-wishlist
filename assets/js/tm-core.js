@@ -125,16 +125,40 @@ const clearWishlistStorage = () => {
  */
 const updateWishlistLinks = (shareToken) => {
 
+    const getEmbedQueryString = () => {
+        const currentUrl = new URL(window.location.href);
+        const query = new URLSearchParams();
+
+        if (currentUrl.searchParams.has('tvembed')) {
+            const tvEmbedValue = currentUrl.searchParams.get('tvembed') || '1';
+            query.set('tvembed', tvEmbedValue);
+        }
+
+        const queryString = query.toString();
+        return queryString ? `?${queryString}` : '';
+    };
+
+    const buildWishlistUrl = (token) => {
+        const query = getEmbedQueryString();
+
+        if (token) {
+            return `/wishlist/share/${encodeURIComponent(token)}/${query}`;
+        }
+
+        return `/wishlist/${query}`;
+    };
+
     const token = shareToken || localStorage.getItem('tm_wishlist_share_token');
 
-    if (token) {
-        document.querySelectorAll('a[href*="/wishlist"]')
-            .forEach(link => {
-                if (link.id !== 'manage_lists') {
-                    link.href = `/wishlist/share/${token}/`;
-                }
-            });
-    }
+    document.querySelectorAll('a[href*="/wishlist"]')
+        .forEach(link => {
+            if (link.id === 'manage_lists') {
+                link.href = buildWishlistUrl('');
+                return;
+            }
+
+            link.href = buildWishlistUrl(token);
+        });
 
 };
 

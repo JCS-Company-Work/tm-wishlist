@@ -168,13 +168,15 @@ class TMAddItems {
         // Prevent default button behavior
         e.preventDefault();
 
-        // Determine if we're adding or removing based on current state
-        const isCurrentlyAdded = button.getAttribute('aria-pressed') === 'true';
-        // Get product ID and either add or remove config based on current state
+        // Determine add/remove action from the live selected configuration.
+        // This avoids stale aria-pressed states when swatch UI updates are delayed.
         const productId = this.getProductId(button);
+        const savedConfigs = getSavedConfigs();
+        const currentConfig = this.getCurrentProductConfig();
+        const matchIndex = this.findMatchingConfigIndex(savedConfigs, currentConfig, productId);
 
         // Ensure product ID is present
-        if (isCurrentlyAdded) {
+        if (matchIndex !== -1) {
           this.removeConfig(productId, button);
         } else {
           this.addConfig(productId, button);
@@ -202,9 +204,6 @@ class TMAddItems {
     // Ensure product ID is present
     if (!productId) return;
 
-    // Select all layer option inputs
-    const layerInputs = document.querySelectorAll('.obj-top-colour input, .obj-metal-edge-veneer input, .obj-base input, .obj-model select');
-
     // Function to update button state
     const updateButtonState = () => {
       const savedConfigs = getSavedConfigs();
@@ -214,11 +213,33 @@ class TMAddItems {
     //Set initial state once DOM has applied any changes (two rAFs to ensure styles applied)
     requestAnimationFrame(() => requestAnimationFrame(updateButtonState));
 
-    // Update state whenever selections change
-    layerInputs.forEach(input => {
-      input.addEventListener('change', () => {
+    // Delegate updates so newly-rendered swatches/model controls are also covered.
+    document.addEventListener('change', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      if (target.matches('.obj-top-colour input, .obj-metal-edge-veneer input, .obj-base input, .obj-model select')) {
         requestAnimationFrame(updateButtonState);
-      });
+      }
+    });
+
+    // Created By Us presets apply values programmatically; listen for an
+    // explicit integration event so button state stays accurate.
+    document.addEventListener('tm3d:config-applied', () => {
+      requestAnimationFrame(updateButtonState);
+    });
+
+    // Fallback for Created By Us cards: their click flow updates inputs
+    // programmatically and timing can vary, so recompute after the mutation.
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      if (target.closest('.created-by-us-configuration')) {
+        setTimeout(() => {
+          requestAnimationFrame(() => requestAnimationFrame(updateButtonState));
+        }, 0);
+      }
     });
 
   }

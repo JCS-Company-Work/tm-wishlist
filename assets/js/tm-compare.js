@@ -172,6 +172,19 @@ class TMCompare {
 
             createListBtn.addEventListener('click', () => {
 
+                const getWishlistRootUrl = () => {
+                    const currentUrl = new URL(window.location.href);
+                    const params = new URLSearchParams();
+
+                    if (currentUrl.searchParams.has('tvembed')) {
+                        const tvEmbedValue = currentUrl.searchParams.get('tvembed') || '1';
+                        params.set('tvembed', tvEmbedValue);
+                    }
+
+                    const query = params.toString();
+                    return query ? `/wishlist?${query}` : '/wishlist';
+                };
+
                 // Get user token from cookie               
                 const userTokenMatch = document.cookie.match(/(?:^|; )tm_wishlist_user_token=([^;]*)/);
                 const userToken = userTokenMatch ? userTokenMatch[1] : null;
@@ -191,7 +204,7 @@ class TMCompare {
 
                     // If we are on the share page, redirect to the main wishlist page to show the new list
                     if (window.location.pathname.startsWith('/wishlist/share/')) {
-                        window.location.href = '/wishlist';
+                        window.location.href = getWishlistRootUrl();
 
                         // Add data to local storage for use after redirect
                         localStorage.setItem('tm_wishlist_new_list_data', JSON.stringify(data));

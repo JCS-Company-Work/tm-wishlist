@@ -7,6 +7,30 @@ import { getProductConfigsFromStorage } from './helpers/storage/get-product-conf
 import { clickButton } from './helpers/buttons/click-button.js';
 import { captureApiResponse } from './helpers/api/capture-api-response.js';
 
+async function dismissCookieBannerIfPresent(page) {
+    await page.evaluate(() => {
+        const banner = document.getElementById('cookie-consent-banner');
+        if (banner) {
+            banner.remove();
+        }
+    });
+
+    const banner = page.locator('#cookie-consent-banner');
+    if (await banner.isVisible().catch(() => false)) {
+        const acceptAllButton = page.locator('#btn-accept-all-toggle');
+        if (await acceptAllButton.isVisible().catch(() => false)) {
+            await acceptAllButton.click();
+        } else {
+            const dismissButton = banner.locator('button').first();
+            if (await dismissButton.isVisible().catch(() => false)) {
+                await dismissButton.click();
+            }
+        }
+
+        await banner.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+    }
+}
+
 test ('Product appears in correct list after addition', async ({ page, baseURL }) => {
 
     // Add a product to the wishlist and generate a share token
@@ -111,6 +135,58 @@ test('Removed product is removed from correct list', async ({ page, baseURL }) =
     // Assert that the expected list is empty or does not exist after removal
     expect(expectedList).toEqual([]) || expect(expectedList.length).toBe(0);
     
+});
+
+test('Same product with different colours can both be added @critical', async ({ page, baseURL }) => {
+
+    // Add first configuration for the same product.
+    await page.goto(`${baseURL}/product/tavolo-mezzaluna-colonna/?colour=Laurent%20Golden&base=Yamuna&veneer=Brushed%20Inox`);
+    await dismissCookieBannerIfPresent(page);
+    const firstAddButton = page.locator('.tm-add-to-compare').first();
+    await firstAddButton.waitFor({ state: 'visible' });
+    await firstAddButton.click();
+
+    await waitForConfigsInStorage(page);
+    await assertRemoveFromWishlistVisible(page);
+
+    // Load same product with a different colour and add it as a second config.
+    await page.goto(`${baseURL}/product/tavolo-mezzaluna-colonna/?colour=Laguna%20Blanca&base=Yamuna&veneer=Brushed%20Inox`);
+    await dismissCookieBannerIfPresent(page);
+    const secondAddButton = page.locator('.tm-add-to-compare').first();
+    await secondAddButton.waitFor({ state: 'visible' });
+    await secondAddButton.click();
+
+    await page.waitForFunction(() => {
+        const raw = localStorage.getItem('tm_wishlist_configs');
+        if (!raw) return false;
+
+        const userToken = document.cookie.match(new RegExp('(^| )tm_wishlist_user_token=([^;]+)'))?.[2];
+        const shareToken = localStorage.getItem('tm_wishlist_share_token');
+        if (!userToken || !shareToken) return false;
+
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed?.[userToken]?.[shareToken]) && parsed[userToken][shareToken].length >= 2;
+    });
+
+    const shareToken = await getShareTokenFromStorage(page);
+    expect(shareToken).not.toBeNull();
+
+    const productConfigs = await getProductConfigsFromStorage(page);
+    const userToken = await page.evaluate(() => {
+        const match = document.cookie.match(new RegExp('(^| )tm_wishlist_user_token=([^;]+)'));
+        return match ? match[2] : null;
+    });
+    expect(userToken).not.toBeNull();
+
+    const expectedList = productConfigs[userToken][shareToken];
+    expect(expectedList.length).toBeGreaterThanOrEqual(2);
+
+    const firstVariant = expectedList.find(item => item.productName === 'Tavolo Mezzaluna Colonna' && item.colour === 'Laurent Golden');
+    const secondVariant = expectedList.find(item => item.productName === 'Tavolo Mezzaluna Colonna' && item.colour === 'Laguna Blanca');
+
+    expect(firstVariant).toBeTruthy();
+    expect(secondVariant).toBeTruthy();
+
 });
 
 // test ('Max list items cannot exceed limit of 6', async ({ page, baseURL }) => {

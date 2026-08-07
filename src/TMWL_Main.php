@@ -55,8 +55,23 @@
 
             if ( ! $product ) return;
 
+            $share_token = isset( $_COOKIE['tm_wishlist_share_token'] ) ? sanitize_text_field( wp_unslash( $_COOKIE['tm_wishlist_share_token'] ) ) : '';
+            $wishlist_path = 'wishlist';
+
+            if ( ! empty( $share_token ) ) {
+                $wishlist_path = 'wishlist/share/' . rawurlencode( $share_token );
+            }
+
+            $wishlist_url = trailingslashit( home_url( $wishlist_path ) );
+
+            if ( isset( $_GET['tvembed'] ) ) {
+                $tvembed = sanitize_text_field( wp_unslash( $_GET['tvembed'] ) );
+                $wishlist_url = add_query_arg( 'tvembed', ( $tvembed === '' ? '1' : $tvembed ), $wishlist_url );
+            }
+
             printf(
-                '<a href="/wishlist" id="view-wishlist" class="wishlist btn btn-outline-secondary btn-sm button level-02" data-product-id="%d" role="button" aria-pressed="false">%s</a>',
+                '<a href="%1$s" id="view-wishlist" class="wishlist btn btn-outline-secondary btn-sm button level-02" data-product-id="%2$d" role="button" aria-pressed="false">%3$s</a>',
+                esc_url( $wishlist_url ),
                 absint( $product->get_id() ),
                 esc_html__( 'View Wishlist', 'tm-product-compare' )
             );

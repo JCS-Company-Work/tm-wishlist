@@ -438,7 +438,7 @@
         public function listControlButtons($share_token) {
 
             $buttonData = [
-                'share_wishllist' => [
+                'share_wishlist' => [
                     'label' => 'Share',
                     'action' => 'share_wishlist',
                 ],
@@ -458,7 +458,7 @@
 
             // Hide owner-destructive actions in showroom embeds.
             if ( $this->isShowroomEmbed() ) {
-                unset($buttonData['delete_list_all'], $buttonData['delete_list_me']);
+                unset($buttonData['delete_list_all'], $buttonData['delete_list_me'], $buttonData['share_wishlist']);
             }
 
             // Loop over data and create buttons
