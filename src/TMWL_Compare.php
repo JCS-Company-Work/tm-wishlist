@@ -187,7 +187,7 @@
 
                     echo '<div class="tm-compare-list tm-compare-grid tm-compare-list-multi">';
                     foreach ($products as $item) {
-                        $url = self::setUrl($item);
+                        $url = $this->setUrl($item);
                         ?>
                         <div class="tm-compare-item" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>">
                             <a href="<?php echo esc_url( $url ); ?>">
@@ -294,7 +294,7 @@
                             $config_key = self::generateConfigKey($item);
 
                             // Check if URL has params; if not, build from attributes
-                            $url = self::setUrl($item);
+                            $url = $this->setUrl($item);
 
                             ?>
 
@@ -497,7 +497,7 @@
          * @param array $item
          * @return string
          */
-        public static function setUrl($item) {
+        public function setUrl($item) {
 
             // Check if URL already has query parameters
             $url = $item['url'];
@@ -516,6 +516,10 @@
                 if (!empty($item['base'])) $params['base'] = $item['base'];
                 if (!empty($item['veneer'])) $params['veneer'] = $item['veneer'];
                 if (!empty($item['model'])) $params['model'] = $item['model'];
+
+                if ($this->isShowroomEmbed()) {
+                    $params['tvembed'] = 'embed-class';
+                }
 
                 // Append parameters to URL
                 if (!empty($params)) {
