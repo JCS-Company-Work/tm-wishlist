@@ -517,15 +517,16 @@
                 if (!empty($item['veneer'])) $params['veneer'] = $item['veneer'];
                 if (!empty($item['model'])) $params['model'] = $item['model'];
 
-                if ($this->isShowroomEmbed()) {
-                    $params['tvembed'] = 'embed-class';
-                }
-
                 // Append parameters to URL
                 if (!empty($params)) {
                     $url .= (strpos($url, '?') === false ? '?' : '&') . http_build_query($params);
                 }
 
+            }
+
+            // Check showroom embed state every time this method runs.
+            if ($this->isShowroomEmbed()) {
+                $url .= (strpos($url, '?') === false ? '?' : '&') . 'tvembed=embed-class';
             }
 
             // Return the final URL
