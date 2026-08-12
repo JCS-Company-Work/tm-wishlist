@@ -69,6 +69,14 @@ class TMAddItems {
     } else {
       this.waitingForShowroomToken = true;
       this.requestShowroomToken();
+      // Fall back to a locally-generated token if the parent doesn't respond within 1s
+      setTimeout(() => {
+        if (this.waitingForShowroomToken && !this.getUserToken()) {
+          this.waitingForShowroomToken = false;
+          this.setUserToken(crypto.randomUUID(), { persistCookie: true, sameSite: 'None', secure: true });
+          this.seedFromServer();
+        }
+      }, 1000);
     }
       
   }
