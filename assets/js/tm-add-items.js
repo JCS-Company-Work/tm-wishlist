@@ -124,9 +124,15 @@ class TMAddItems {
         return;
       }
 
-      console.info('[tm-wishlist] received showroom user token from parent');
       this.setUserToken(token, { persistCookie: true, sameSite: 'None', secure: true });
       this.waitingForShowroomToken = false;
+
+      try {
+        localStorage.setItem('tm_wishlist_user_token', token);
+      } catch (error) {
+        // Ignore localStorage restrictions inside embedded contexts.
+      }
+
       this.seedFromServer();
     };
 
@@ -141,8 +147,6 @@ class TMAddItems {
     if (!this.isIframe) {
       return;
     }
-
-    console.info('[tm-wishlist] requesting showroom user token from parent');
 
     window.parent.postMessage(
       { type: 'tm-showroom-request-user' },
@@ -382,9 +386,8 @@ class TMAddItems {
             // Attempt to parse existing localStorage data
             allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
           } catch {
-            // If parsing fails, log a warning and reset to an empty object to allow saving new data
+            // If parsing fails, reset to an empty object to allow saving new data.
             allUserLists = {};
-            console.warn('Failed to parse wishlist data from localStorage during share token update. Resetting to empty object.');
           }
           // Ensure user token structure exists
           if (!allUserLists[userToken]) {
@@ -462,7 +465,6 @@ class TMAddItems {
 
     // If no user token URL is configured, log an error and return null
     if (!this.USER_TOKEN_URL) {
-      console.error('User token URL is not configured.');
       return null;
     }
 
@@ -486,16 +488,10 @@ class TMAddItems {
 
       }
 
-      // If no token returned, log an error and return null
-      console.error('User token was not returned by the server.');
       return null;
 
     } catch (err) {
-
-      // If an error occurs during the request, log the error and return null
-      console.error('Failed to generate user token:', err);
       return null;
-
     }
 
   }
@@ -554,11 +550,7 @@ class TMAddItems {
             allUserLists = JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
 
           } catch {
-
-            // If parsing fails, log a warning and reset to an empty object to allow seeding new data
             allUserLists = {};
-            console.warn('Failed to parse existing wishlist data from localStorage. Resetting to empty state.');
-
           }
 
           // Build nested structure: userToken -> shareToken -> configs
@@ -633,8 +625,8 @@ class TMAddItems {
           this.seedFromServer();
         }
       })
-      .catch(err => {
-        console.warn('Failed to recover user token using share token:', err);
+      .catch(() => {
+        // Silently ignore recovery failures and continue with the current flow.
       });
     } else {
       // If no data exists, clear storage to avoid stale data

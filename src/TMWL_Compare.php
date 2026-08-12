@@ -64,10 +64,18 @@
          * @return bool
          */
         private function isShowroomEmbed() {
-            // Check for 'Sec-Fetch-Dest' header to see if the request is coming from an iframe
-            $fetch_dest = isset($_SERVER['HTTP_SEC_FETCH_DEST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_SEC_FETCH_DEST'])) : '';
+            // Showroom embeds are identified by either the embed query params or the browser iframe header.
+            if ( isset( $_GET['tvembed'] ) && sanitize_text_field( wp_unslash( $_GET['tvembed'] ) ) === 'embed-class' ) {
+                return true;
+            }
 
-            return ($fetch_dest === 'iframe');
+            if ( isset( $_GET['source'] ) && sanitize_text_field( wp_unslash( $_GET['source'] ) ) === 'showroom' ) {
+                return true;
+            }
+
+            $fetch_dest = isset( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ) : '';
+
+            return $fetch_dest === 'iframe';
 
         }
 

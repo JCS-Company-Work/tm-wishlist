@@ -24,9 +24,17 @@ const getCookie = (name) => {
  */
 const getWishlistUserToken = () => {
 
-    const storedToken = localStorage.getItem('tm_wishlist_user_token');
-    if (storedToken) {
-        return storedToken;
+    try {
+        const storedToken = localStorage.getItem('tm_wishlist_user_token');
+        if (storedToken) {
+            return storedToken;
+        }
+    } catch (error) {
+        // Ignore localStorage failures and continue to the cookie fallback below.
+    }
+
+    if (window.__TM_WISHLIST_USER_TOKEN__) {
+        return window.__TM_WISHLIST_USER_TOKEN__;
     }
 
     const cookieToken = getCookie('tm_wishlist_user_token');
@@ -48,27 +56,36 @@ const setWishlistUserToken = (token, options = {}) => {
 
     if (!token) return '';
 
+    const normalizedToken = String(token);
     const isEmbedded = window.self !== window.top;
     const { persistCookie = true, sameSite = isEmbedded ? 'None' : 'Lax', secure = window.location.protocol === 'https:' } = options;
 
-    localStorage.setItem('tm_wishlist_user_token', token);
-
-    if (persistCookie) {
-        const cookieParts = [
-            `tm_wishlist_user_token=${encodeURIComponent(token)}`,
-            'path=/',
-            'max-age=31536000',
-            `SameSite=${sameSite}`,
-        ];
-
-        if (secure) {
-            cookieParts.push('Secure');
-        }
-
-        document.cookie = cookieParts.join('; ');
+    try {
+        localStorage.setItem('tm_wishlist_user_token', normalizedToken);
+    } catch (error) {
+        window.__TM_WISHLIST_USER_TOKEN__ = normalizedToken;
     }
 
-    return token;
+    if (persistCookie) {
+        try {
+            const cookieParts = [
+                `tm_wishlist_user_token=${encodeURIComponent(normalizedToken)}`,
+                'path=/',
+                'max-age=31536000',
+                `SameSite=${sameSite}`,
+            ];
+
+            if (secure) {
+                cookieParts.push('Secure');
+            }
+
+            document.cookie = cookieParts.join('; ');
+        } catch (error) {
+            // Cookie storage is optional fallback behavior; continue without blocking the user flow.
+        }
+    }
+
+    return normalizedToken;
 
 };
 
@@ -100,7 +117,6 @@ const getAllListsForUser = (userToken, storageKey) => {
         allUserLists = JSON.parse(localStorage.getItem(storageKey)) || {};
     } catch {
         allUserLists = {};
-        console.warn('Failed to parse wishlist data from localStorage. Resetting to empty object.');
     }
 
     if (!allUserLists[userToken]) {
@@ -115,7 +131,6 @@ const getAllListsForUser = (userToken, storageKey) => {
  * Clear all wishlist-related data from local storage
  */
 const clearWishlistStorage = () => {
-    console.log('Clearing wishlist data from localStorage');
     localStorage.removeItem('tm_wishlist_configs');
     localStorage.removeItem('tm_wishlist_share_token');
 };
@@ -221,9 +236,7 @@ const syncToServer = async (configs, saveUrl) => {
         }
 
     } catch (err) {
-
-        console.error('Error syncing wishlist to server:', err);
-
+        // Ignore sync errors and allow the UI to keep working.
     }
 };
 

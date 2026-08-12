@@ -106,8 +106,9 @@
             // Enqueue core script globally
             wp_enqueue_script( 'tm-core-js' );
 
-            // Enqueue add items script on product pages, landing page, or if 3d model viewer shortcode is present
-            if ( is_product() || has_shortcode( $post_content, 'tm_model_viewer' ) || is_page_template( 'landing-page.php' ) ) {
+            // Enqueue add items script on product pages, landing page, showroom embeds, or if 3d model viewer shortcode is present
+            $is_showroom_embed = ( isset( $_GET['tvembed'] ) && $_GET['tvembed'] === 'embed-class' ) || ( isset( $_GET['source'] ) && $_GET['source'] === 'showroom' );
+            if ( is_product() || has_shortcode( $post_content, 'tm_model_viewer' ) || is_page_template( 'landing-page.php' ) || $is_showroom_embed ) {
                 wp_enqueue_script( 'tm-add-items-js' );
             }
 
