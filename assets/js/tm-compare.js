@@ -28,6 +28,9 @@ class TMCompare {
 
     init() {
 
+        // Check if page needs to load wishlist via REST API (iframe context)
+        this.loadWishlistViaAPIIfNeeded();
+
         // Initialize share button listeners
         this.addControlBtnListeners();
 
@@ -57,7 +60,157 @@ class TMCompare {
 
     }
 
-    /** ================= Event Binding / Setup ================= **/
+    /**
+     * Load wishlist via REST API when in iframe context and PHP couldn't provide data
+     */
+    loadWishlistViaAPIIfNeeded() {
+        const container = document.querySelector('.tm-wishlist-lists[data-load-via-api="true"]');
+        if (!container) return;
+
+        const userToken = getWishlistUserToken();
+        if (!userToken) {
+            // If no token yet and in iframe, wait for postMessage bridge
+            if (window.self !== window.top) {
+                this.setupShowroomTokenBridge(container);
+            }
+            return;
+        }
+
+        this.loadUserListsViaAPI(container, userToken);
+    }
+
+    /**
+     * Listen for showroom token from parent iframe
+     */
+    setupShowroomTokenBridge(container) {
+        const isIframe = window.self !== window.top;
+        if (!isIframe) return;
+
+        const allowedOrigin = window.TMWLSettings?.showroom_parent_origin || null;
+        
+        const messageHandler = (event) => {
+            if (allowedOrigin && event.origin !== allowedOrigin) {
+                return;
+            }
+
+            if (event.source !== window.parent) {
+                return;
+            }
+
+            const data = event.data;
+            if (!data || data.type !== 'tm-showroom-user') {
+                return;
+            }
+
+            const token = data.showroom || data.user_token || null;
+            if (!token) {
+                return;
+            }
+
+            // Store token
+            setWishlistUserToken(token, { persistCookie: true, sameSite: 'None', secure: true });
+            
+            // Remove listener
+            window.removeEventListener('message', messageHandler);
+            
+            // Load lists
+            this.loadUserListsViaAPI(container, token);
+        };
+
+        window.addEventListener('message', messageHandler);
+        
+        // Request token from parent
+        if (window.parent) {
+            window.parent.postMessage(
+                { type: 'tm-showroom-request-user' },
+                window.TMWLSettings?.showroom_parent_origin || '*'
+            );
+        }
+    }
+
+    /**
+     * Fetch and render user lists from REST API
+     */
+    async loadUserListsViaAPI(container, userToken) {
+        try {
+            const url = `/wp-json/tm-wishlist/v1/lists?user_token=${encodeURIComponent(userToken)}`;
+            const res = await fetch(url, { credentials: 'omit' });
+            
+            if (!res.ok) {
+                container.innerHTML = '<p>Unable to load your designs. Please refresh the page.</p>';
+                return;
+            }
+
+            const data = await res.json();
+            if (!data.lists || data.lists.length === 0) {
+                container.innerHTML = '<p>Your designs list is empty. To start, view our products pages.</p>';
+                return;
+            }
+
+            // Render lists
+            let html = '';
+            data.lists.forEach(list => {
+                html += this.renderListHTML(list);
+            });
+            container.innerHTML = html;
+            container.classList.remove('tm-wishlist-loading');
+
+            // Re-bind event listeners
+            this.addControlBtnListeners();
+            this.addRemoveBtnListeners();
+            this.toggleList();
+            this.updateActiveList();
+            this.updateListName();
+        } catch (error) {
+            container.innerHTML = '<p>Error loading your designs. Please refresh.</p>';
+        }
+    }
+
+    /**
+     * Render a single list HTML
+     */
+    renderListHTML(list) {
+        const items = list.data || [];
+        let itemsHTML = '';
+
+        if (items.length === 0) {
+            itemsHTML = '<p>Your designs list is empty. To start, view our products pages.</p>';
+        } else {
+            itemsHTML = items.map(item => `
+                <div class="tm-compare-item" data-product-id="${item.product_id}">
+                    <a href="${item.url || '#'}">
+                        <img src="${item.image}" alt="${item.productName}">
+                        <h2 class="woocommerce-loop-product__title">${item.productName}</h2>
+                    </a>
+                    ${item.price ? `<p class="price"><strong>Price: </strong>${item.price}</p>` : ''}
+                    ${item.colour ? `<p class="colour"><strong>Top Colour: </strong>${item.colour}</p>` : ''}
+                    ${item.base ? `<p class="base"><strong>Base: </strong>${item.base}</p>` : ''}
+                    ${item.veneer ? `<p class="veneer"><strong>Metal Edge Veneer: </strong>${item.veneer}</p>` : ''}
+                    ${item.model ? `<p class="model"><strong>Model: </strong>${item.model}</p>` : ''}
+                    <span class="remove-from-compare" data-product-id="${item.product_id}"></span>
+                </div>
+            `).join('');
+        }
+
+        return `
+            <div class="tm-compare-list-wrapper" data-share-token="${list.share_token}">
+                <div class="open-close-container"></div>
+                <div class="tm-compare-list-header">
+                    <h3 class="tm-compare-list-name">${list.list_name}</h3>
+                </div>
+                <div class="tm-compare-list tm-compare-grid tm-compare-list-multi open">
+                    ${itemsHTML}
+                </div>
+                <div class="list-control-buttons">
+                    <button id="share_wishlist" class="share-btn">Share</button>
+                    <button id="clear_wishlist" class="clear-btn">Clear</button>
+                    <button id="delete_wishlist" class="delete-btn">Delete</button>
+                </div>
+            </div>
+        `;
+    }
+
+
 
     /**
      * Bind click events to control buttons (share, clear, delete) and trigger appropriate API calls based on button ID

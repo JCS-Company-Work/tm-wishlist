@@ -127,119 +127,122 @@
 
         public function getUserLists() {
 
-            // Check for user token in cookie
-            if ( isset($_COOKIE['tm_wishlist_user_token']) && !empty($_COOKIE['tm_wishlist_user_token']) ) {
-                
-                global $wpdb;
-                
-                // Sanitize user token from cookie
-                $user_token = sanitize_text_field($_COOKIE['tm_wishlist_user_token']);
+            global $wpdb;
+            $table_name = TMWL_DB::get_table_name();
+            $user_token = '';
+            $lists = [];
 
-                // Set table name
-                $table_name = TMWL_DB::get_table_name();
-                
-                // Fetch all lists for this user
-                $sql = $wpdb->prepare("SELECT * FROM $table_name WHERE user_token = %s", $user_token);
-                $lists = $wpdb->get_results($sql, ARRAY_A);
-
-                // If no lists, return message
-                if (empty($lists)) {
-                    return $this->empty_message;
-                }
-
-                // Output buffer for rendering lists
+            // In iframe embed context, render empty container for JS to populate via REST API
+            if ($this->isShowroomEmbed()) {
                 ob_start();
-
-                // Prepare lists for rendering (decode data)
-                $render_lists = [];
-                foreach ($lists as $list) {
-                    $list['data'] = !empty($list['data']) ? json_decode($list['data'], true) : [];
-                    $render_lists[] = $list;
-                }
-
-                // Determine active list based on cookie and available lists
-                $active_list_name = $this->determineActiveList($render_lists);
-
-                // Render active list controls with active list name (hidden in showroom embeds)
-                if ( ! $this->isShowroomEmbed() ) {
-                    echo $this->activeWishlistControls('multi-list', $active_list_name);
-                }
-
-                echo '<div class="tm-wishlist-lists">';
-
-                // Loop through lists and render each one
-                foreach ($render_lists as $list) {
-                    $products = $list['data'];
-                    $user_token = $list['user_token'] ?? '';
-                    $share_token = $list['share_token'] ?? '';
-                    $list_name = $list['list_name'];
-                    echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">';
-                    echo $this->openCloseActive();
-                    echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($list_name) . '</h3>';
-                    if ($user_token && isset($_COOKIE['tm_wishlist_user_token']) && $_COOKIE['tm_wishlist_user_token'] === $user_token && ! $this->isShowroomEmbed()) {
-                        echo '<button type="button" class="edit-list-name" aria-label="Edit list name"><i class="fa-light fa-pen"></i></button>';
-                    }
-                    echo '</div>';
-                    // If no items in this list, show message, control buttons, close wrapper, and skip to next list
-                    if (empty($products) || !is_array($products)) {
-                        echo '<div class="tm-compare-list tm-compare-list-multi">';
-                        echo $this->empty_message;
-                        echo '</div>'; // Close .tm-compare-list-multi
-                        // Show control buttons even for empty lists
-                        if ($user_token) {
-                            echo $this->listControlButtons($share_token);
-                        }
-                        echo '</div>'; // Close .tm-compare-list-wrapper
-                        continue;
-                    }
-
-                    echo '<div class="tm-compare-list tm-compare-grid tm-compare-list-multi">';
-                    foreach ($products as $item) {
-                        $url = $this->setUrl($item);
-                        ?>
-                        <div class="tm-compare-item" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>">
-                            <a href="<?php echo esc_url( $url ); ?>">
-                                <img src="<?php echo esc_url( $item['image'] ); ?>" alt="<?php echo esc_attr( $item['productName'] ); ?>">
-                                <h2 class="woocommerce-loop-product__title"><?php echo esc_html( $item['productName'] ); ?></h2>
-                            </a>
-                            <?php if ( ! empty( $item['price'] ) ) : ?>
-                                <p class="price"><strong>Price: </strong><?php echo esc_html( $item['price'] ); ?></p>
-                            <?php endif; ?>
-                            <?php if ( ! empty( $item['colour'] ) ) : ?>
-                                <p class="colour"><strong>Top Colour: </strong><?php echo esc_html( $item['colour'] ); ?></p>
-                            <?php endif; ?>
-                            <?php if ( ! empty( $item['base'] ) ) : ?>
-                                <p class="base"><strong>Base: </strong><?php echo esc_html( $item['base'] ); ?></p>
-                            <?php endif; ?>
-                            <?php if ( ! empty( $item['veneer'] ) ) : ?>
-                                <p class="veneer"><strong>Metal Edge Veneer: </strong><?php echo esc_html( $item['veneer'] ); ?></p>
-                            <?php endif; ?>
-                            <?php if ( ! empty( $item['model'] ) ) : ?>
-                                <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
-                            <?php endif; ?>
-                            <!--<i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
-                                data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>-->
-                            <span 
-                                class="remove-from-compare" 
-                                data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
-                                data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>">
-                                
-                                
-                            </span>
-                        </div>
-                        <?php
-                    }
-                    echo '</div>';
-                    if ( $user_token ) {
-                        echo $this->listControlButtons($share_token);
-                    }
-                    echo '</div>';
-                }
+                echo '<div class="tm-wishlist-lists tm-wishlist-loading" data-load-via-api="true">';
+                echo '<div class="tm-loading-message">Loading your designs...</div>';
                 echo '</div>';
                 return ob_get_clean();
-            } else {
+            }
+
+            // Standard context: try to get user token from cookie
+            if ( isset($_COOKIE['tm_wishlist_user_token']) && !empty($_COOKIE['tm_wishlist_user_token']) ) {
+                $user_token = sanitize_text_field($_COOKIE['tm_wishlist_user_token']);
+                $sql = $wpdb->prepare("SELECT * FROM $table_name WHERE user_token = %s", $user_token);
+                $lists = $wpdb->get_results($sql, ARRAY_A);
+            }
+
+            // If still no lists, return empty message
+            if (empty($lists)) {
                 return $this->empty_message;
             }
+
+            // Output buffer for rendering lists
+            ob_start();
+
+            // Prepare lists for rendering (decode data)
+            $render_lists = [];
+            foreach ($lists as $list) {
+                $list['data'] = !empty($list['data']) ? json_decode($list['data'], true) : [];
+                $render_lists[] = $list;
+            }
+
+            // Determine active list based on cookie and available lists
+            $active_list_name = $this->determineActiveList($render_lists);
+
+            // Render active list controls with active list name (hidden in showroom embeds)
+            if ( ! $this->isShowroomEmbed() ) {
+                echo $this->activeWishlistControls('multi-list', $active_list_name);
+            }
+
+            echo '<div class="tm-wishlist-lists">';
+
+            // Loop through lists and render each one
+            foreach ($render_lists as $list) {
+                $products = $list['data'];
+                $list_user_token = $list['user_token'] ?? '';
+                $share_token = $list['share_token'] ?? '';
+                $list_name = $list['list_name'];
+                echo '<div class="tm-compare-list-wrapper" data-share-token="' . esc_attr($share_token) . '">';
+                echo $this->openCloseActive();
+                echo '<div class="tm-compare-list-header"><h3 class="tm-compare-list-name">' . esc_html($list_name) . '</h3>';
+                if ($list_user_token && isset($_COOKIE['tm_wishlist_user_token']) && $_COOKIE['tm_wishlist_user_token'] === $list_user_token && ! $this->isShowroomEmbed()) {
+                    echo '<button type="button" class="edit-list-name" aria-label="Edit list name"><i class="fa-light fa-pen"></i></button>';
+                }
+                echo '</div>';
+                // If no items in this list, show message, control buttons, close wrapper, and skip to next list
+                if (empty($products) || !is_array($products)) {
+                    echo '<div class="tm-compare-list tm-compare-list-multi">';
+                    echo $this->empty_message;
+                    echo '</div>'; // Close .tm-compare-list-multi
+                    // Show control buttons even for empty lists
+                    if ($list_user_token) {
+                        echo $this->listControlButtons($share_token);
+                    }
+                    echo '</div>'; // Close .tm-compare-list-wrapper
+                    continue;
+                }
+
+                echo '<div class="tm-compare-list tm-compare-grid tm-compare-list-multi">';
+                foreach ($products as $item) {
+                    $url = $this->setUrl($item);
+                    ?>
+                    <div class="tm-compare-item" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>">
+                        <a href="<?php echo esc_url( $url ); ?>">
+                            <img src="<?php echo esc_url( $item['image'] ); ?>" alt="<?php echo esc_attr( $item['productName'] ); ?>">
+                            <h2 class="woocommerce-loop-product__title"><?php echo esc_html( $item['productName'] ); ?></h2>
+                        </a>
+                        <?php if ( ! empty( $item['price'] ) ) : ?>
+                            <p class="price"><strong>Price: </strong><?php echo esc_html( $item['price'] ); ?></p>
+                        <?php endif; ?>
+                        <?php if ( ! empty( $item['colour'] ) ) : ?>
+                            <p class="colour"><strong>Top Colour: </strong><?php echo esc_html( $item['colour'] ); ?></p>
+                        <?php endif; ?>
+                        <?php if ( ! empty( $item['base'] ) ) : ?>
+                            <p class="base"><strong>Base: </strong><?php echo esc_html( $item['base'] ); ?></p>
+                        <?php endif; ?>
+                        <?php if ( ! empty( $item['veneer'] ) ) : ?>
+                            <p class="veneer"><strong>Metal Edge Veneer: </strong><?php echo esc_html( $item['veneer'] ); ?></p>
+                        <?php endif; ?>
+                        <?php if ( ! empty( $item['model'] ) ) : ?>
+                            <p class="model"><strong>Model: </strong><?php echo esc_html( $item['model'] ); ?></p>
+                        <?php endif; ?>
+                        <!--<i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
+                            data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>-->
+                        <span 
+                            class="remove-from-compare" 
+                            data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
+                            data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>">
+                            
+                            
+                        </span>
+                    </div>
+                    <?php
+                }
+                echo '</div>';
+                if ( $list_user_token ) {
+                    echo $this->listControlButtons($share_token);
+                }
+                echo '</div>';
+            }
+            echo '</div>';
+            return ob_get_clean();
         }
 
         public function shareTokenList() {
