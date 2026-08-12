@@ -138,19 +138,6 @@ class TMCompare {
                 window.TMWLSettings?.showroom_parent_origin || '*'
             );
         }
-
-        // If parent doesn't respond within 1s, retry with any token now in localStorage
-        setTimeout(() => {
-            const token = getWishlistUserToken();
-            if (token) {
-                console.log('[TMCompare] Parent did not respond, using local token:', token);
-                window.removeEventListener('message', messageHandler);
-                this.loadUserListsViaAPI(container, token);
-            } else {
-                console.log('[TMCompare] No token available, showing empty state');
-                container.innerHTML = '<p>Your designs list is empty. To start, view our products pages.</p>';
-            }
-        }, 1000);
     }
 
     /**

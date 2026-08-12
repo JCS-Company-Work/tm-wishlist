@@ -300,16 +300,16 @@
             // Render comparison table
             ob_start();
 
-            // In iframe embed, cookies are blocked so ownership can't be verified — skip view-only message
-            if(!$row['is_owner'] && ! $this->isShowroomEmbed()) {
+            // If user is not owner, show message about view only design list
+            if(!$row['is_owner']) {
                 echo '<p>This is a view only designs list. To create your own designs list, please add products from the product pages.</p>';
             }
 
-            // Show controls to owner, or in iframe where ownership can't be cookie-verified
-            if($row['is_owner'] || $this->isShowroomEmbed()) {
-                if( ! $this->isShowroomEmbed()) {
-                    echo $this->activeWishlistControls('single-list', $row['list_name']);
-                }
+            // Render active list controls with active list name is user is list owner
+            if($row['is_owner'] && ! $this->isShowroomEmbed()) {
+                
+                echo $this->activeWishlistControls('single-list', $row['list_name']);
+
             }
 
             echo '<div class="tm-wishlist-lists">';
@@ -355,7 +355,9 @@
                                 <?php if ( ! empty( $item['model'] ) ) : ?>
                                     <p class="model"><strong>Model: </strong><?php echo esc_html( ucwords($item['model']) ); ?></p>
                                 <?php endif; ?>
-                                <?php if ( $row['is_owner'] || $this->isShowroomEmbed() ) : ?>
+                                <?php if ( $row['is_owner'] ) : ?>
+                                    <!--<i class="remove-from-compare fa-solid fa-xmark" data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
+                                        data-layers-ids="<?php echo isset($item['layerIds']) && is_array($item['layerIds']) ? esc_attr( implode(',', array_map('intval', $item['layerIds']) ) ) : ''; ?>"></i>-->
                                     <span 
                                         class="remove-from-compare" 
                                         data-product-id="<?php echo esc_attr( $item['product_id'] ); ?>"
@@ -369,8 +371,8 @@
 
                     echo '</div>';
                 
-                    // Show controls to owner, or in iframe where ownership can't be cookie-verified
-                    if ( $row['is_owner'] || $this->isShowroomEmbed() ) {
+                    // If owner, show control buttons (share, clear, delete)
+                    if ( $row['is_owner'] ) {
                         echo $this->listControlButtons($share_token_param);
                     }
 

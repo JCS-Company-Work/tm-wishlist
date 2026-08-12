@@ -108,7 +108,8 @@
 
             // Enqueue add items script on product pages, landing page, showroom embeds, or if 3d model viewer shortcode is present
             $is_showroom_embed = ( isset( $_GET['tvembed'] ) && $_GET['tvembed'] === 'embed-class' ) || ( isset( $_GET['source'] ) && $_GET['source'] === 'showroom' );
-            if ( is_product() || has_shortcode( $post_content, 'tm_model_viewer' ) || is_page_template( 'landing-page.php' ) || $is_showroom_embed ) {
+            // Exclude wishlist page — tm-compare.js handles the token bridge there
+            if ( ( is_product() || has_shortcode( $post_content, 'tm_model_viewer' ) || is_page_template( 'landing-page.php' ) || $is_showroom_embed ) && ! is_page( 'wishlist' ) ) {
                 wp_enqueue_script( 'tm-add-items-js' );
             }
 
