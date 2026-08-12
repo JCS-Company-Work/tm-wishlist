@@ -65,17 +65,21 @@ class TMCompare {
      */
     loadWishlistViaAPIIfNeeded() {
         const container = document.querySelector('.tm-wishlist-lists[data-load-via-api="true"]');
+        console.log('[TMCompare] loadWishlistViaAPIIfNeeded - container found:', !!container);
         if (!container) return;
 
         const userToken = getWishlistUserToken();
+        console.log('[TMCompare] userToken:', userToken, 'isIframe:', window.self !== window.top);
         if (!userToken) {
             // If no token yet and in iframe, wait for postMessage bridge
             if (window.self !== window.top) {
+                console.log('[TMCompare] Setting up showroom token bridge');
                 this.setupShowroomTokenBridge(container);
             }
             return;
         }
 
+        console.log('[TMCompare] Calling loadUserListsViaAPI with token:', userToken);
         this.loadUserListsViaAPI(container, userToken);
     }
 
@@ -84,29 +88,37 @@ class TMCompare {
      */
     setupShowroomTokenBridge(container) {
         const isIframe = window.self !== window.top;
+        console.log('[TMCompare] setupShowroomTokenBridge - isIframe:', isIframe);
         if (!isIframe) return;
 
         const allowedOrigin = window.TMWLSettings?.showroom_parent_origin || null;
+        console.log('[TMCompare] Allowed origin:', allowedOrigin);
         
         const messageHandler = (event) => {
+            console.log('[TMCompare] Message received:', event.data, 'from origin:', event.origin);
             if (allowedOrigin && event.origin !== allowedOrigin) {
+                console.log('[TMCompare] Origin mismatch, ignoring');
                 return;
             }
 
             if (event.source !== window.parent) {
+                console.log('[TMCompare] Source is not parent, ignoring');
                 return;
             }
 
             const data = event.data;
             if (!data || data.type !== 'tm-showroom-user') {
+                console.log('[TMCompare] Not a showroom user message, ignoring');
                 return;
             }
 
             const token = data.showroom || data.user_token || null;
             if (!token) {
+                console.log('[TMCompare] No token in message');
                 return;
             }
 
+            console.log('[TMCompare] Received token from parent:', token);
             // Store token
             setWishlistUserToken(token, { persistCookie: true, sameSite: 'None', secure: true });
             
@@ -119,6 +131,7 @@ class TMCompare {
 
         window.addEventListener('message', messageHandler);
         
+        console.log('[TMCompare] Requesting token from parent');
         // Request token from parent
         if (window.parent) {
             window.parent.postMessage(
@@ -134,14 +147,18 @@ class TMCompare {
     async loadUserListsViaAPI(container, userToken) {
         try {
             const url = `/wp-json/tm-wishlist/v1/lists?user_token=${encodeURIComponent(userToken)}`;
+            console.log('[TMCompare] Fetching from URL:', url);
             const res = await fetch(url, { credentials: 'omit' });
+            console.log('[TMCompare] Fetch response status:', res.status);
             
             if (!res.ok) {
+                console.error('[TMCompare] API error:', res.status, res.statusText);
                 container.innerHTML = '<p>Unable to load your designs. Please refresh the page.</p>';
                 return;
             }
 
             const data = await res.json();
+            console.log('[TMCompare] API response data:', data);
             if (!data.lists || data.lists.length === 0) {
                 container.innerHTML = '<p>Your designs list is empty. To start, view our products pages.</p>';
                 return;
@@ -162,6 +179,7 @@ class TMCompare {
             this.updateActiveList();
             this.updateListName();
         } catch (error) {
+            console.error('[TMCompare] Error loading wishlist:', error);
             container.innerHTML = '<p>Error loading your designs. Please refresh.</p>';
         }
     }
