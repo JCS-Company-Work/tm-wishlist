@@ -1426,7 +1426,14 @@ class TMCompare {
 
 }
 
-// Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize immediately when script loads (script has defer attribute, loads after DOM ready)
+console.log('[TMCompare] Script loaded, initializing...');
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('[TMCompare] DOMContentLoaded fired, creating instance');
+        new TMCompare();
+    });
+} else {
+    console.log('[TMCompare] DOM already loaded, creating instance immediately');
     new TMCompare();
-});
+}
