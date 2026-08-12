@@ -44,16 +44,20 @@
          */
         public function compare_shortcode() {
 
+            error_log('[TMWL] compare_shortcode called with REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
+
             // Check if page is /wishlist or /wishlist/share/* and get share token from URL
             if (preg_match('#^/wishlist/share/#', $_SERVER['REQUEST_URI'])) {
-
+                error_log('[TMWL] Detected share page');
                 return $this->shareTokenList();
                     
 
             } else if(isset($_SERVER['REQUEST_URI']) && (rtrim($_SERVER['REQUEST_URI'], '/') === '/wishlist')) {
-                
+                error_log('[TMWL] Detected wishlist page');
                 return $this->getUserLists();
                 
+            } else {
+                error_log('[TMWL] REQUEST_URI does not match wishlist pattern');
             }
 
         }
@@ -65,17 +69,25 @@
          */
         private function isShowroomEmbed() {
             // Showroom embeds are identified by either the embed query params or the browser iframe header.
-            if ( isset( $_GET['tvembed'] ) && sanitize_text_field( wp_unslash( $_GET['tvembed'] ) ) === 'embed-class' ) {
-                return true;
-            }
-
-            if ( isset( $_GET['source'] ) && sanitize_text_field( wp_unslash( $_GET['source'] ) ) === 'showroom' ) {
-                return true;
-            }
-
+            $tvembed = isset( $_GET['tvembed'] ) ? sanitize_text_field( wp_unslash( $_GET['tvembed'] ) ) : '';
+            $source = isset( $_GET['source'] ) ? sanitize_text_field( wp_unslash( $_GET['source'] ) ) : '';
             $fetch_dest = isset( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ) : '';
+            
+            error_log('[TMWL] isShowroomEmbed check - tvembed=' . $tvembed . ', source=' . $source . ', fetch_dest=' . $fetch_dest);
+            
+            if ( $tvembed === 'embed-class' ) {
+                error_log('[TMWL] isShowroomEmbed=true (tvembed)');
+                return true;
+            }
 
-            return $fetch_dest === 'iframe';
+            if ( $source === 'showroom' ) {
+                error_log('[TMWL] isShowroomEmbed=true (source)');
+                return true;
+            }
+
+            $is_embed = $fetch_dest === 'iframe';
+            error_log('[TMWL] isShowroomEmbed=' . ($is_embed ? 'true' : 'false') . ' (header)');
+            return $is_embed;
 
         }
 
@@ -132,8 +144,14 @@
             $user_token = '';
             $lists = [];
 
+            error_log('[TMWL] getUserLists called');
+
             // In iframe embed context, render empty container for JS to populate via REST API
-            if ($this->isShowroomEmbed()) {
+            $is_embed = $this->isShowroomEmbed();
+            error_log('[TMWL] is_embed=' . ($is_embed ? 'true' : 'false'));
+            
+            if ($is_embed) {
+                error_log('[TMWL] Rendering API load container');
                 ob_start();
                 echo '<div class="tm-wishlist-lists tm-wishlist-loading" data-load-via-api="true">';
                 echo '<div class="tm-loading-message">Loading your designs...</div>';
@@ -141,15 +159,21 @@
                 return ob_get_clean();
             }
 
+            error_log('[TMWL] Checking for cookie-based lists');
             // Standard context: try to get user token from cookie
             if ( isset($_COOKIE['tm_wishlist_user_token']) && !empty($_COOKIE['tm_wishlist_user_token']) ) {
                 $user_token = sanitize_text_field($_COOKIE['tm_wishlist_user_token']);
+                error_log('[TMWL] Found user token in cookie: ' . $user_token);
                 $sql = $wpdb->prepare("SELECT * FROM $table_name WHERE user_token = %s", $user_token);
                 $lists = $wpdb->get_results($sql, ARRAY_A);
+                error_log('[TMWL] Found ' . count($lists) . ' lists');
+            } else {
+                error_log('[TMWL] No user token cookie found');
             }
 
             // If still no lists, return empty message
             if (empty($lists)) {
+                error_log('[TMWL] Returning empty message');
                 return $this->empty_message;
             }
 
