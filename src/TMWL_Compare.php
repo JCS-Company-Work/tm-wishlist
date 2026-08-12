@@ -46,18 +46,20 @@
 
             error_log('[TMWL] compare_shortcode called with REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
 
+            // Strip query string so ?tvembed=... params don't break the path comparison
+            $path = rtrim( parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH ), '/' );
+
             // Check if page is /wishlist or /wishlist/share/* and get share token from URL
-            if (preg_match('#^/wishlist/share/#', $_SERVER['REQUEST_URI'])) {
+            if (preg_match('#^/wishlist/share/#', $path)) {
                 error_log('[TMWL] Detected share page');
                 return $this->shareTokenList();
-                    
 
-            } else if(isset($_SERVER['REQUEST_URI']) && (rtrim($_SERVER['REQUEST_URI'], '/') === '/wishlist')) {
+            } else if ( $path === '/wishlist' ) {
                 error_log('[TMWL] Detected wishlist page');
                 return $this->getUserLists();
-                
+
             } else {
-                error_log('[TMWL] REQUEST_URI does not match wishlist pattern');
+                error_log('[TMWL] REQUEST_URI does not match wishlist pattern: ' . $path);
             }
 
         }
