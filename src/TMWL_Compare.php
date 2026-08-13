@@ -528,37 +528,24 @@
         }
 
         /**
-         * Check if url already has query params and adds them if not, based on available attributes
-         * This is to ensure that even default configuartions have parsable url parameters for sharing and comparison
+         * Add saved configuration attributes to the product URL.
+         * This keeps compare links complete even when the stored URL has only some parameters.
          * 
          * @param array $item
          * @return string
          */
         public function setUrl($item) {
 
-            // Check if URL already has query parameters
             $url = $item['url'];
 
-            // If not, build URL with available attributes
-            $parsed_url = parse_url($url);
+            $params = [];
+            if (!empty($item['colour'])) $params['colour'] = $item['colour'];
+            if (!empty($item['base'])) $params['base'] = $item['base'];
+            if (!empty($item['veneer'])) $params['veneer'] = $item['veneer'];
+            if (!empty($item['model'])) $params['model'] = $item['model'];
 
-            // Only append parameters if there are none in the URL already to avoid conflicts
-            if (empty($parsed_url['query'])) {
-
-                // Initialize parameters array
-                $params = [];
-                
-                // Build query parameters based on available attributes
-                if (!empty($item['colour'])) $params['colour'] = $item['colour'];
-                if (!empty($item['base'])) $params['base'] = $item['base'];
-                if (!empty($item['veneer'])) $params['veneer'] = $item['veneer'];
-                if (!empty($item['model'])) $params['model'] = $item['model'];
-
-                // Append parameters to URL
-                if (!empty($params)) {
-                    $url .= (strpos($url, '?') === false ? '?' : '&') . http_build_query($params);
-                }
-
+            if (!empty($params)) {
+                $url = add_query_arg($params, $url);
             }
 
             // Check showroom embed state every time this method runs.
