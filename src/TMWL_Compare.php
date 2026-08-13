@@ -539,12 +539,14 @@
             $url = $item['url'];
 
             $params = [];
+            if (!empty($item['product_id'])) $params['id'] = $item['product_id'];
             if (!empty($item['colour'])) $params['colour'] = $item['colour'];
             if (!empty($item['base'])) $params['base'] = $item['base'];
             if (!empty($item['veneer'])) $params['veneer'] = $item['veneer'];
             if (!empty($item['model'])) $params['model'] = $item['model'];
 
             if (!empty($params)) {
+                $url = remove_query_arg(array_keys($params), $url);
                 $url = add_query_arg($params, $url);
             }
 
